@@ -1,0 +1,6 @@
+This repository is related to or targets the Kaggle competition
+"Conway's Reverse Game of Life" available at
+  http://www.kaggle.com/c/conway-s-reverse-game-of-life
+
+The initial programs involve deterministic reversal, but presumably
+eventually the project will move on to probabilistic reversal.
