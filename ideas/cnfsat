@@ -1,0 +1,23 @@
+With no extra variables, there's a straightforward method of encoding
+the rules of Life: for each of the 2^9 = 512 configurations of
+dead/alive for every 3x3 region, encode what the successor is with a
+single clause.
+
+This can be optimized slightly.
+
+The successor is alive if exactly three of the neighbors is alive OR if
+the center is alive and exactly two of the neighbors.  This can be
+encoded with (9 choose 3) = 84 clauses.
+
+(For each of the 3-subsets of all 9 things: if the subset includes the
+center, encode the full (9+1)-term clause; else, exclude the center for
+a (8+1)-term clause.)
+
+
+The successor is dead if at least four of the neighbors are alive or if
+at most two of the neighbors and itself are alive (equivalently, at
+least seven of the neighbors and itself are dead).  This can be encoded
+with (8 choose 4) + (9 choose 2) = 70 + 36 = 106 clauses.
+
+
+Together it takes 190 clauses.
