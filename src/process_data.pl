@@ -24,8 +24,8 @@ while( <> ) {
 	@F = split ",", $_;
 	$id    = shift @F;
 	$delta = shift @F;
-	@stop  = join "", splice @F, -$M if $trainq;
-	@start = join "", @F;
+	@stop  = splice @F, -$M if $trainq;
+	@start = @F;
 
 	mkdir $id unless -e $id;
 	open DELTA, ">", "$id/delta";
