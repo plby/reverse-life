@@ -1,2 +1,20 @@
-- Two steps forward, one step back approach.
-- "Optimal" deterministic reasoning.
+Two steps forward, one step back approach:
+
+For each grid in the test/training set, try to determine a single
+possible grid delta steps back, and also delta+5 steps back.
+Prediction: this approach will succeed, and will take about 10 minutes
+per grid on a weak computer.
+
+
+"Optimal" deterministic reasoning:
+
+Write a bunch of helper routines for dealing with SAT solvers, letting a
+library take care of things like remembering the variables/clauses,
+calling the solver, interpreting the output, and such.
+
+One higher-level routine then can accept a SAT problem and return
+possible values for all of the variables, ie which are forced to be true
+or false.
+
+Then this should be run on all of the test/training data.  Prediction:
+this will take a while.
