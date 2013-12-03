@@ -7,9 +7,10 @@ use autodie;
 use File::Copy;
 use Time::HiRes qw(gettimeofday);
 
-my( $directory, $jump, $MAX );
+my( $directory, $jump, $fiveonly, $MAX );
 $directory = shift;
 $jump = shift || 2;
+$fiveonly = shift;
 $MAX = 50_000;
 
 chdir $directory;
@@ -20,6 +21,7 @@ for my $i ( 1 .. $MAX ) {
 	next OUTER unless -e "delta" and -e "stop";
 	my $delta = 0+`cat delta`;
 	next OUTER unless 1 <= $delta and $delta <= 5;
+	next OUTER if $fiveonly and $delta != 5;
 	for my $j ( 0 .. $delta-1 ) {
 		print "i=$i\tj=$j\tdelta=$delta\n";
 		my $prev = "frog$jump-$j";
