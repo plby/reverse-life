@@ -16,13 +16,11 @@ chdir $directory;
 
 OUTER:
 for my $i ( 1 .. $MAX ) {
-	print "i=$i\n";
 	chdir $i;
 	next OUTER unless -e "delta" and -e "stop";
 	my $delta = `cat delta`;
-	print "delta=$delta\n";
 	for my $j ( 0 .. $delta-1 ) {
-		print "j=$j\n";
+		print "i=$i\tj=$j\tdelta=$delta\n";
 		my $prev = "frog$jump-$j";
 		$prev = "stop" if $j == 0;
 		my $next = "frog$jump-".($j+1);
