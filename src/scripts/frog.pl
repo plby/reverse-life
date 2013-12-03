@@ -18,7 +18,8 @@ OUTER:
 for my $i ( 1 .. $MAX ) {
 	chdir $i;
 	next OUTER unless -e "delta" and -e "stop";
-	my $delta = `cat delta`;
+	my $delta = 0+`cat delta`;
+	next OUTER unless 1 <= $delta and $delta <= 5;
 	for my $j ( 0 .. $delta-1 ) {
 		print "i=$i\tj=$j\tdelta=$delta\n";
 		my $prev = "frog$jump-$j";
