@@ -1,22 +1,24 @@
 #!/usr/bin/perl
 
 # This file generates a SAT instance that encodes a backwards life
-# evolution of $K steps on an $N x $N grid.
+# evolution of $K steps on an $N x $N grid.  If $flip is set, then it
+# flips the order of the boards (which helps with other programs).
 
-# Usage: $0 $N $K
+# Usage: $0 $N $K [$flip]
 
 # Accepts, on standard input, the grid.  Everything but 0s and 1s is
 # ignored, so the input is quite flexible.
 
-# Example: echo "0100 0100 0100 0000" | perl undo_one.pl 4 2
+# Example: echo "0100 0100 0100 0000" | perl undo_k.pl 4 2
 
 use strict;
 use warnings;
 use autodie;
 
-my( $N, $K );
+my( $N, $K, $flip );
 $N = shift || 20;
 $K = shift || 1;
+$flip = shift;
 
 my $M = $N * $N;
 
@@ -84,6 +86,7 @@ sub get_var {
 	my( $k, $i, $j ) = @_;
 	return 0 if $i < 0 or $i >= $N or $j < 0 or $j >= $N;
 	return ($W[$i][$j] ? $alive : -$alive) if $k == $K;
+	$k = $K-1 - $k if $flip;
 	return $k*$M + $N*$i + $j + 1;
 }
 
