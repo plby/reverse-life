@@ -4,6 +4,10 @@ use strict;
 use warnings;
 use autodie;
 
+use File::Basename;
+use lib dirname (__FILE__);
+use ReverseLife qw(display_grid);
+
 my $N = shift || 20;
 my $M = $N * $N;
 
@@ -19,8 +23,8 @@ my( @F );
 my $s = join " ", <>;
 $s =~ s/(-?\d+)/process($1)/egs;
 
-print join ",", @F[1..$M];
-print "\n";
+shift @F;
+print display_grid(flat => \@F);
 
 sub process {
     my( $x ) = @_;
