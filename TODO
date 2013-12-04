@@ -1,9 +1,8 @@
-Two steps forward, one step back approach:
+Immediate goals:
 
-For each grid in the test/training set, try to determine a single
-possible grid delta steps back, and also delta+5 steps back.
-Prediction: this approach will succeed, and will take about 10 minutes
-per grid on a weak computer.
+* Check in test/data/.
+* Write a grid-wise inverter.
+* Run grid-wise inverter on the test set.
 
 
 "Optimal" deterministic reasoning:
