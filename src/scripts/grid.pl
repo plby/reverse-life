@@ -7,14 +7,17 @@ use autodie;
 use File::Copy;
 use Time::HiRes qw(gettimeofday);
 
-my( $directory, $limit );
+my( $directory, $limit, $reverse );
 $directory = shift;
-$limit = shift || 5;
+$limit     = shift // 5;
+$reverse   = shift // 0;
 
 chdir $directory;
 
+my @files = "00001" .. "50000";
+@files = reverse @files if $reverse;
 OUTER:
-for my $i ( "00001" .. "50000" ) {
+for my $i ( @files ) {
 	my $subdir = join "/", split "", $i;
 	chdir $subdir;
 
