@@ -45,7 +45,7 @@ for my $i ( 1 .. 50_000 ) {
 die "Didn't find any cells to grade!?\n"
   unless $total > 0;
 
-my $result = $right / $total;
+my $result = 1 - $right / $total;
 print "$result\n";
 
 __DATA__
