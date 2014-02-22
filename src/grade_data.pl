@@ -6,7 +6,8 @@ use autodie;
 
 my( $train, $submission, $N ) = @ARGV;
 die "Usage: $0 TRAIN_FILE SUBMISSION_FILE [N]\n"
-  unless -e $train and -e $submission;
+  unless defined $train and defined $submission
+  and -e $train and -e $submission;
 $N ||= 20;
 my $M = $N*$N;
 
