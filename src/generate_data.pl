@@ -49,10 +49,10 @@ sub rand_bernoulli {
 
 sub evolve_many {
 	my( $delta, $r ) = @_;
-	my( $s );
+	my $s = $r;
 	while( $delta > 0 ) {
 		$delta--;
-		$s = [evolve_once( $r )];
+		$s = [evolve_once( $s )];
 	}
 	return $s;
 }
