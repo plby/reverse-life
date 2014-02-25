@@ -1,10 +1,28 @@
 #include <bitset>
+#include <cassert>
 #include <cstdint>
 #include <iostream>
 using namespace std;
 
 const int N = 20;
 const int M = N * N;
+
+/*
+  We precompute a lookup table for the game of life function for
+  speed's sake.
+ */
+const int LIFE_TABLE = 1 << 9;
+bool life_step[LIFE_TABLE];
+
+void init( ) {
+	for( int i = 0; i < LIFE_TABLE; i++ ) {
+		int t = __builtin_popcount(i);
+		if( t == 3 )
+			life_step[i] = true;
+		if( t == 4 )
+			life_step[i] = (i & (1 << 4));
+	}
+}
 
 /*
   We have a variety of helper tools to deal with a very fundamental
@@ -33,21 +51,29 @@ const int M = N * N;
   transformed into a 26-bit representation, which will be used to
   index into an array.
  */
-struct grid {
+struct grid25 {
 	int dx, dy;
-	bitset<M> g;
+	bitset<25> g;
 
 	bool inside( int x, int y ) {
-		return -2 <= (x-dx) and (x-dx) <= 2 and -2 <= (y-dy) and (y-dy) <= 2;
+		return -2 <= x and x <= 2 and -2 <= y and y <= 2 and 
+			-2 <= (x-dx) and (x-dx) <= 2 and -2 <= (y-dy) and (y-dy) <= 2;
 	}
 
 	int get_int( int x, int y ) {
 		if( not inside(x,y) )
 			return -1;
-		return get_bool(x,y);
+		return get_raw(x,y);
 	}
 	bool get_bool( int x, int y ) {
+		return ((not inside(x,y)) and get_raw(x,y));
+	}
+	bool get_raw( int x, int y ) {
 		return g[ 5*(x+2) + (y+2) ];
+	}
+
+	void set( int x, int y, bool v ) {
+		g.set( 5*(x+2) + (y+2), v );
 	}
 };
 typedef int32_t encoding;
@@ -66,7 +92,7 @@ typedef int32_t encoding;
   of these bits, as well as the order of the five bits mentioned
   above, see the code.
  */
-encoding encode( grid g ) {
+encoding encode( grid25 g ) {
 	if( g.dx == 0 and g.dy == 0 ) {
 		return g.g.to_ulong();
 	}
@@ -92,8 +118,42 @@ encoding encode( grid g ) {
 	}
 	return temp.to_ulong();
 }
+grid25 decode( encoding e ) {
+	grid25 g;
+	if( (e & (1 << 25)) == 0 ) {
+		g.dx = 0;
+		g.dy = 0;
+		g.g = bitset<25>(e);
+		return g;
+	}
+
+	bitset<26> temp( e );
+	// Read top five bits
+	unsigned int dxy = 0;
+	for( int i = 0; i < 5; i++ ) {
+		if( temp[20+i] )
+			dxy |= 1 << i;
+	}
+	assert( dxy < 25 );
+	g.dx = (dxy / 5) - 2;
+	g.dy = (dxy % 5) - 2;
+	assert( g.dx != 0 or g.dy != 0 );
+
+	// Read rest of the bits
+	int k = 0;
+	for( int x = -2; x <= 2; x++ ) {
+		for( int y = -2; y <= 2; y++ ) {
+			if( g.inside(x,y) ) {
+				g.set(x,y, temp[k] );
+				k++;
+			}
+		}
+	}
+	return g;	
+}
 
 int main( ) {
+	init();
 
 	return 0;
 }
