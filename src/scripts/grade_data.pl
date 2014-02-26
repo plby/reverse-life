@@ -19,7 +19,7 @@ open SUBMISSION, "<", $submission;
 	<TRAIN>;
 	my $t = <DATA>;
 	my $s = <SUBMISSION>;
-	die "Bad header in submission file.\n" unless $s eq $t;
+	die "Bad header in submission file.\n" unless substr(0,$s,length($t)) eq $t;
 }
 
 my( $right, $total );
