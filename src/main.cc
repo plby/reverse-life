@@ -17,6 +17,8 @@ const int LIFE_TABLE = 1 << 9;
 bool life_step[LIFE_TABLE];
 
 void init( ) {
+	srand(0);
+
 	for( int i = 0; i < LIFE_TABLE; i++ ) {
 		int t = __builtin_popcount(i);
 		if( t == 3 )
@@ -94,8 +96,11 @@ struct grid {
 	int get_int( const int& x, const int& y ) const {
 		return get_int_uncentered(x+cx, y+cy);
 	}
+	bool get_bool_uncentered( const int& x, const int& y ) const {
+		return inside_uncentered(x,y) and get_raw_uncentered(x,y);
+	}
 	bool get_bool( const int& x, const int& y ) const {
-		return ((not inside(x,y)) and get_raw(x,y));
+		return get_bool_uncentered(x+cx, y+cy);
 	}
 	bool get_raw_uncentered( const int& x, const int& y ) const {
 		return g[ x*Y + y ];
@@ -122,6 +127,23 @@ bool operator != ( const grid<X,Y>& g, const grid<X,Y>& h ) {
 	return g.g != h.g;
 }
 
+template <int X, int Y>
+ostream& operator << ( ostream& out, const grid<X,Y>& g ) {
+	// Header information
+	out << "grid " << X << "x" << Y << " "
+	    << "bxy=(" << g.bx << "," << g.by << ") "
+	    << "cxy=(" << g.cx << "," << g.cy << ")\n";
+	for( int y = 0; y < Y; y++ ) {
+		for( int x = 0; x < X; x++ ) {
+			int t = g.get_int_uncentered(x,y);
+			out << "_.#"[t+1];
+		}
+		out << "\n";
+	}
+
+	return out;
+}
+
 /*
   Life evolution, a pretty key subroutine
  */
@@ -138,11 +160,12 @@ grid<X,Y> evolve_once( const grid<X,Y>& start ) {
 		int t = 0;
 		for( int dx = -1; dx <= 1; dx++ ) {
 		for( int dy = -1; dy <= 1; dy++ ) {
-			t += start.get_uncentered( x+dx, y+dy );
+			t += start.get_bool_uncentered( x+dx, y+dy );
 			t <<= 1;
 		}
 		}
 		stop.set_uncentered( x, y, life_step[t] );
+		cout << t << " " << life_step[t] << "\n";
 	}
 	}
 
@@ -255,6 +278,16 @@ grid<X,Y> decode( const encoding& f ) {
 
 int main( ) {
 	init();
+
+	int i = rand() % (1 << 16);
+	grid<4,4> g = decode<4,4>(i);
+	cout << g << "\n";
+
+	g = evolve_once(g);
+	cout << g << "\n";
+
+	g = evolve_once(g);
+	cout << g << "\n";
 
 	return 0;
 }
