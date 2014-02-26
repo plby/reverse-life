@@ -160,8 +160,8 @@ grid<X,Y> evolve_once( const grid<X,Y>& start ) {
 		int t = 0;
 		for( int dx = -1; dx <= 1; dx++ ) {
 		for( int dy = -1; dy <= 1; dy++ ) {
-			t += start.get_bool_uncentered( x+dx, y+dy );
 			t <<= 1;
+			t += start.get_bool_uncentered( x+dx, y+dy );
 		}
 		}
 		stop.set_uncentered( x, y, life_step[t] );
