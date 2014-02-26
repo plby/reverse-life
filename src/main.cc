@@ -7,6 +7,8 @@ using namespace std;
 const int N = 20;
 const int M = N * N;
 
+const int CODE5 = 38183849;
+
 /*
   We precompute a lookup table for the game of life function for
   speed's sake.
@@ -37,17 +39,17 @@ void init( ) {
   paper.
 
   If the boundary of the grid is within the XxY cell, that information
-  is represented.  Specifically, a positive dx indicates how many
+  is represented.  Specifically, a positive bx indicates how many
   columns on the left are outside of the grid, while a negative the
-  opposite on the other side.  A dx of 0 means at least part of each
-  column is inside.  The same for dy, where positive dy means rows
+  opposite on the other side.  A bx of 0 means at least part of each
+  column is inside.  The same for by, where positive by means rows
   missing at the top.  Example:
 
   X....  X = outside
   X....  . = inside
   X....
-  XXXXX  dx = +1  cx = 0
-  XXXXX  dy = -2  cy = 0
+  XXXXX  bx = +1  cx = 0
+  XXXXX  by = -2  cy = 0
 
   One relatively important thing is that every 5x5 such grid can be
   transformed into a 26-bit representation, which will be used to
@@ -62,50 +64,50 @@ struct grid {
 
 	// this represents how much of the grid is "out of bounds", in
 	// the manner described above
-	int dx, dy;
+	int bx, by;
 
 	bitset<X*Y> g;
 
-	grid( ) : cx(0), cy(0), dx(0), dy(0), g(0) {
+	grid( ) : cx(0), cy(0), bx(0), by(0), g(0) {
 	}
 
-	bool represented_uncentered( int x, int y ) const {
+	bool represented_uncentered( const int& x, const int& y ) const {
 		return 0 <= x and x < X and 0 <= y and y < Y;
 	}
-	bool represented( int x, int y ) const {
+	bool represented( const int& x, const int& y ) const {
 		return represented_uncentered( x+cx, y+cy );
 	}
 
-	bool inside_uncentered( int x, int y ) const {
+	bool inside_uncentered( const int& x, const int& y ) const {
 		return represented_uncentered(x,y) and
-			0 <= (x-dx) and (x-dx) < X and 0 <= (y-dy) and (y-dy) < Y;
+			0 <= (x-bx) and (x-bx) < X and 0 <= (y-by) and (y-by) < Y;
 	}
-	bool inside( int x, int y ) const {
+	bool inside( const int& x, const int& y ) const {
 		return inside_uncentered(x+cx, y+cy);
 	}
 
-	int get_int_uncentered( int x, int y ) const {
+	int get_int_uncentered( const int& x, const int& y ) const {
 		if( not inside_uncentered(x,y) )
 			return -1;
 		return get_raw_uncentered(x,y);
 	}
-	int get_int( int x, int y ) const {
+	int get_int( const int& x, const int& y ) const {
 		return get_int_uncentered(x+cx, y+cy);
 	}
-	bool get_bool( int x, int y ) const {
+	bool get_bool( const int& x, const int& y ) const {
 		return ((not inside(x,y)) and get_raw(x,y));
 	}
-	bool get_raw_uncentered( int x, int y ) const {
+	bool get_raw_uncentered( const int& x, const int& y ) const {
 		return g[ x*Y + y ];
 	}
-	bool get_raw( int x, int y ) const {
+	bool get_raw( const int& x, const int& y ) const {
 		return get_raw_uncentered( x+cx, y+cy );
 	}
 
-	void set_uncentered( int x, int y, bool v ) {
+	void set_uncentered( const int& x, const int& y, const bool& v ) {
 		g.set( x*Y + y, v );
 	}
-	void set( int x, int y, bool v ) {
+	void set( const int& x, const int& y, const bool& v ) {
 		set_uncentered( x+cx, y+cy, v );
 	}
 };
@@ -113,38 +115,73 @@ typedef uint32_t encoding;
 
 template <int X, int Y>
 bool operator != ( const grid<X,Y>& g, const grid<X,Y>& h ) {
-	if( g.dx != h.dx )
+	if( g.bx != h.bx )
 		return true;
-	if( g.dy != h.dy )
+	if( g.by != h.by )
 		return true;
 	return g.g != h.g;
 }
 
 /*
+  Life evolution, a pretty key subroutine
+ */
+template <int X, int Y>
+grid<X,Y> evolve_once( const grid<X,Y>& start ) {
+	grid<X,Y> stop;
+	stop.cx = start.cx;
+	stop.cy = start.cy;
+	stop.bx = start.bx;
+	stop.by = start.by;
+
+	for( int x = 0; x < X; x++ ) {
+	for( int y = 0; y < Y; y++ ) {
+		int t = 0;
+		for( int dx = -1; dx <= 1; dx++ ) {
+		for( int dy = -1; dy <= 1; dy++ ) {
+			t += start.get_uncentered( x+dx, y+dy );
+			t <<= 1;
+		}
+		}
+		stop.set_uncentered( x, y, life_step[t] );
+	}
+	}
+
+	return stop;
+}
+template <int X, int Y>
+grid<X,Y> evolve_many( const grid<X,Y>& start, const int& k ) {
+	grid<X,Y> result = start;
+	for( int i = 0; i < k; i++ ) {
+		result = evolve_once(result);
+	}
+	return result;
+}
+
+/*
   The main encoding is fairly simple.  It does not encode (cx,cy).  So
-  it just lists, in order, the different possible (dx,dy,grid) tuples,
-  beginning with (dx,dy) = (0,0) and afterwards proceeding in
+  it just lists, in order, the different possible (bx,by,grid) tuples,
+  beginning with (bx,by) = (0,0) and afterwards proceeding in
   lexicographic order -- eg, for a centered 5x5 grid, beginning with
   (-2,-2) and (-2,-1).  See the code for more details.
  */
 template <int X, int Y>
-encoding encode( grid<X,Y> g ) {
-	// Optimized for dx = dy = 0
-	if( g.dx == 0 and g.dy == 0 ) {
+encoding encode( const grid<X,Y>& g ) {
+	// Optimized for bx = by = 0
+	if( g.bx == 0 and g.by == 0 ) {
 		return g.g.to_ulong();
 	}
 
 	// Otherwise, build up to number
 	encoding e = (1 << (X*Y));
-	for( int dx = -(X-1); dx <= (X-1); dx++ ) {
-	for( int dy = -(Y-1); dy <= (Y-1); dy++ ) {
-		if( dx == 0 and dy == 0 )
+	for( int bx = -(X-1); bx <= (X-1); bx++ ) {
+	for( int by = -(Y-1); by <= (Y-1); by++ ) {
+		if( bx == 0 and by == 0 )
 			continue;
 		
-		int width  = X - abs(dx);
-		int height = Y - abs(dy);
+		int width  = X - abs(bx);
+		int height = Y - abs(by);
 		int area   = width * height;
-		if( dx != g.dx or dy != g.dy ) {
+		if( bx != g.bx or by != g.by ) {
 			e += (1 << area);
 		} else {
 			encoding temp = 0;
@@ -165,35 +202,35 @@ encoding encode( grid<X,Y> g ) {
 	}
 	}
 	// If we're here, then this better represent the empty grid
-	assert( g.dx == X and g.dy == Y );
+	assert( g.bx == X and g.by == Y );
 	return e;
 }
 template <int X, int Y>
-grid<X,Y> decode( encoding f ) {
+grid<X,Y> decode( const encoding& f ) {
 	grid<X,Y> g;
-	// Optimized for dx = dy = 0
+	// Optimized for bx = by = 0
 	if( f < (1 << (X*Y)) ) {
-		g.dx = 0;
-		g.dy = 0;
+		g.bx = 0;
+		g.by = 0;
 		g.g = bitset<X*Y>(f);
 		return g;
 	}
 	
 	// Otherwise, build up to number
 	encoding e = (1 << (X*Y));
-	for( int dx = -(X-1); dx <= (X-1); dx++ ) {
-	for( int dy = -(Y-1); dy <= (Y-1); dy++ ) {
-		if( dx == 0 and dy == 0 )
+	for( int bx = -(X-1); bx <= (X-1); bx++ ) {
+	for( int by = -(Y-1); by <= (Y-1); by++ ) {
+		if( bx == 0 and by == 0 )
 			continue;
 		
-		int width  = X - abs(dx);
-		int height = Y - abs(dy);
+		int width  = X - abs(bx);
+		int height = Y - abs(by);
 		int area   = width * height;
 		if( f >= e + (1 << area) ) {
 			e += (1 << area);
 		} else {
-			g.dx = dx;
-			g.dy = dy;
+			g.bx = bx;
+			g.by = by;
 
 			encoding temp = f - e;
 			int k = 0;
@@ -211,8 +248,8 @@ grid<X,Y> decode( encoding f ) {
 	}
 	// If we're here, then this better represent the empty grid
 	assert( e == f );
-	g.dx = X;
-	g.dy = Y;
+	g.bx = X;
+	g.by = Y;
 	return g;
 }
 
