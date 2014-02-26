@@ -55,20 +55,20 @@ struct grid25 {
 	int dx, dy;
 	bitset<25> g;
 
-	bool inside( int x, int y ) {
+	bool inside( int x, int y ) const {
 		return -2 <= x and x <= 2 and -2 <= y and y <= 2 and 
 			-2 <= (x-dx) and (x-dx) <= 2 and -2 <= (y-dy) and (y-dy) <= 2;
 	}
 
-	int get_int( int x, int y ) {
+	int get_int( int x, int y ) const {
 		if( not inside(x,y) )
 			return -1;
 		return get_raw(x,y);
 	}
-	bool get_bool( int x, int y ) {
+	bool get_bool( int x, int y ) const {
 		return ((not inside(x,y)) and get_raw(x,y));
 	}
-	bool get_raw( int x, int y ) {
+	bool get_raw( int x, int y ) const {
 		return g[ 5*(x+2) + (y+2) ];
 	}
 
@@ -76,7 +76,21 @@ struct grid25 {
 		g.set( 5*(x+2) + (y+2), v );
 	}
 };
-typedef int32_t encoding;
+typedef int32_t encoding26;
+
+bool operator != ( const grid25& g, const grid25& h ) {
+	if( g.dx != h.dx )
+		return true;
+	if( g.dy != h.dy )
+		return true;
+	for( int x = -2; x <= 2; x++ ) {
+		for( int y = -2; y <= 2; y++ ) {
+			if( g.get_bool(x,y) != h.get_bool(x,y) )
+				return true;
+		}
+	}
+	return false;
+}
 
 /*
   The encoding is 26 bits.  If the first (most significant bit) is 0,
@@ -92,7 +106,7 @@ typedef int32_t encoding;
   of these bits, as well as the order of the five bits mentioned
   above, see the code.
  */
-encoding encode( grid25 g ) {
+encoding26 encode( grid25 g ) {
 	if( g.dx == 0 and g.dy == 0 ) {
 		return g.g.to_ulong();
 	}
@@ -118,7 +132,7 @@ encoding encode( grid25 g ) {
 	}
 	return temp.to_ulong();
 }
-grid25 decode( encoding e ) {
+grid25 decode( encoding26 e ) {
 	grid25 g;
 	if( (e & (1 << 25)) == 0 ) {
 		g.dx = 0;
@@ -152,8 +166,51 @@ grid25 decode( encoding e ) {
 	return g;	
 }
 
+void test( int i ) {
+	if( (i % 1000000) == 0 )
+		cout << i/1000000 << " million" << endl;
+
+	encoding26 e = i;
+	grid25 g = decode( e );
+	encoding26 f = encode( g );
+	grid25 h = decode( f );
+
+	if( e != f ) {
+		cout << e << " " << f << "\n";
+		cout << "Failed on encoding!\n";
+		exit(10);
+	}
+	if( g != h ) {
+		cout << e << " " << f << "\n";
+		cout << "Failed on grids!\n";
+		exit(10);
+	}
+}
+
 int main( ) {
 	init();
+
+	// Test encoding
+	int i;
+	for( i = 0; i < (1 << 25); i++ ) {
+		test(i);
+	}
+	for( int dx = -2; dx <= 2; dx++ ) {
+		for( int dy = -2; dy <= 2; dy++ ) {
+			if( dx == 0 and dy == 0 )
+				continue;
+			unsigned int dxy = 5 * (dx + 2) + (dy + 2);
+			int width  = 5 - abs(dx);
+			int height = 5 - abs(dy);
+			int area   = width * height;
+			for( int j = 0; j < (1 << area); j++ ) {
+				i = (1 << 25);
+				i += dxy * (1 << 20);
+				i += j;
+				test( i );
+			}
+		}
+	}
 
 	return 0;
 }
