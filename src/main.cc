@@ -209,44 +209,15 @@ grid<X,Y> decode( encoding f ) {
 		}
 	}
 	}
+	// If we're here, then this better represent the empty grid
 	assert( e == f );
 	g.dx = X;
 	g.dy = Y;
 	return g;
 }
 
-void test( int i ) {
-	if( (i % 1000000) == 0 )
-		cout << i/1000000 << " million" << endl;
-
-	encoding  e = i;
-	grid<5,5> g = decode<5,5>( e );
-	encoding  f = encode<5,5>( g );
-	grid<5,5> h = decode<5,5>( f );
-
-	if( e != f ) {
-		cout << e << " " << f << "\n";
-		cout << "Failed on encoding!\n";
-		exit(10);
-	}
-	if( g != h ) {
-		cout << e << " " << f << "\n";
-		cout << "Failed on grids!\n";
-		exit(10);
-	}
-}
-
 int main( ) {
 	init();
-
-	// Test encoding
-	int i;
-	for( i = 0; i < (1 << 25); i++ ) {
-		test(i);
-	}
-	for( ; i < 38183849; i++ ) {
-		test( i );
-	}
 
 	return 0;
 }
