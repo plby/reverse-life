@@ -166,51 +166,8 @@ grid25 decode( encoding26 e ) {
 	return g;	
 }
 
-void test( int i ) {
-	if( (i % 1000000) == 0 )
-		cout << i/1000000 << " million" << endl;
-
-	encoding26 e = i;
-	grid25 g = decode( e );
-	encoding26 f = encode( g );
-	grid25 h = decode( f );
-
-	if( e != f ) {
-		cout << e << " " << f << "\n";
-		cout << "Failed on encoding!\n";
-		exit(10);
-	}
-	if( g != h ) {
-		cout << e << " " << f << "\n";
-		cout << "Failed on grids!\n";
-		exit(10);
-	}
-}
-
 int main( ) {
 	init();
-
-	// Test encoding
-	int i;
-	for( i = 0; i < (1 << 25); i++ ) {
-		test(i);
-	}
-	for( int dx = -2; dx <= 2; dx++ ) {
-		for( int dy = -2; dy <= 2; dy++ ) {
-			if( dx == 0 and dy == 0 )
-				continue;
-			unsigned int dxy = 5 * (dx + 2) + (dy + 2);
-			int width  = 5 - abs(dx);
-			int height = 5 - abs(dy);
-			int area   = width * height;
-			for( int j = 0; j < (1 << area); j++ ) {
-				i = (1 << 25);
-				i += dxy * (1 << 20);
-				i += j;
-				test( i );
-			}
-		}
-	}
 
 	return 0;
 }
