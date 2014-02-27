@@ -17,8 +17,8 @@ const int N = 20;
 const int M = N * N;
 
 const int TEST  = 50000;
-const int TRAIN = 10000;
-const int REPORT = 100;
+const int TRAIN = 50000;
+const int REPORT = 1000;
 
 /*
   We precompute a lookup table for the game of life function for
@@ -557,7 +557,7 @@ big_grid predict( int delta, big_grid stop ) {
 		int alive = brain.get( delta, 0, e, true  );
 
 		// The following reflects a minimal 1/7 prior probability of being dead
-		dead += 5;
+//		dead += 5;
 
 		if( alive > dead ) {
 			result.set_uncentered( x, y, true );
