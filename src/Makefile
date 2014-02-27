@@ -1,7 +1,4 @@
-all: binaries data/brain
+all: binaries
 
 binaries: 
 	cd .. && $(MAKE)
-
-data/brain:
-	time head -c 1527353960 < /dev/zero > data/brain
