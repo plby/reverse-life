@@ -3,6 +3,7 @@
 #include <cassert>
 #include <cstdint>
 #include <iomanip>
+#include <fstream>
 #include <iostream>
 using namespace std;
 
@@ -16,8 +17,9 @@ using namespace std;
 const int N = 20;
 const int M = N * N;
 
-const int TEST  = 50000;
-const int TRAIN = 50000;
+const int SUBMIT = 50000;
+const int TEST   = 50000;
+const int TRAIN  = 50000 * 15;
 const int REPORT = 1000;
 
 /*
@@ -594,11 +596,76 @@ void test( ) {
 	}
 }
 
+void fail_parse( string detail ) {
+	cerr << "Failed to parse test file because of " << detail << ".\n";
+	exit( 2 );
+}
+
+void getcomma( istream& in ) {
+	if( in.get() != ',' ) {
+		fail_parse( "comma" );
+	}
+}
+
+void submit( predictor p ) {
+	ifstream fin( "data/raw/test.csv" );
+	// Ignore header line:
+	string header;
+	getline( fin, header );
+
+	ofstream fout( "data/raw/submit.csv" );
+	// Header line:
+	{
+		fout << "id";
+		for( int i = 1; i <= M; i++ )
+			fout << ",start." << i;
+		fout << "\n";
+	}
+
+	for( int i = 1; i <= SUBMIT; i++ ) {
+		// Read a single line
+		int id;
+		int delta;
+		big_grid stop;
+
+		fin >> id;
+		if( i != id )
+			fail_parse( "id" );
+		getcomma(fin);
+		fin >> delta;
+		if( not( 1 <= delta and delta <= 5 ) )
+			fail_parse( "delta" );
+		for( int x = 0; x < N; x++ ) {
+       		for( int y = 0; y < N; y++ ) {
+			getcomma(fin);
+			int t;
+			fin >> t;
+			if( t != 0 and t != 1 )
+				fail_parse( "bool" );
+			stop.set_uncentered( x, y, t );
+		}
+		}
+
+		// Make a prediction
+		big_grid guess = p( delta, stop );
+
+		// Output
+		fout << id;
+		for( int x = 0; x < N; x++ ) {
+       		for( int y = 0; y < N; y++ ) {
+			fout << "," << guess.get_int_uncentered( x, y );
+		}
+		}
+		fout << "\n";
+	}
+}
+
 int main( ) {
 	init();
 
-	train_many();
-	test();
+	//	train_many();
+	//	test();
+	submit( predict );
 
 	return 0;
 }
