@@ -116,11 +116,64 @@ struct grid {
 		return get_raw_uncentered( x+cx, y+cy );
 	}
 
+	void set_protected_uncentered( const int& x, const int& y, const bool& v ) {
+		if( inside_uncentered(x,y) )
+			g.set( x*Y + y, v );
+	}
 	void set_uncentered( const int& x, const int& y, const bool& v ) {
 		g.set( x*Y + y, v );
 	}
 	void set( const int& x, const int& y, const bool& v ) {
 		set_uncentered( x+cx, y+cy, v );
+	}
+
+	/*
+	  Returns a smaller grid, centered at (x,y) with the
+	  underlying grid offset by (cx2, cy2).
+	*/
+	template<int X2, int Y2>
+	grid<X2, Y2> subgrid( const int& x, const int& y, const int& cx2, const int& cy2 ) {
+		grid<X2, Y2> result;
+		result.cx = cx2;
+		result.cy = cy2;
+
+		// We make some assumptions
+		assert( bx == 0 and by == 0 );
+
+		// The computation of the subordinate (bx, by) is somewhat tricky
+		int t;
+		{
+			t = (x - cx2);
+			if( t < 0 )
+				result.bx = -t;
+			t = (x - cx2) + (X2 - X);
+			if( t > 0 )
+				result.bx = -t;
+		}
+		{
+			t = (y - cy2);
+			if( t < 0 )
+				result.by = -t;
+			t = (y - cy2) + (Y2-Y);
+			if( t > 0 )
+				result.by = -t;
+		}
+		if( abs(result.bx) >= X or abs(result.by) >= Y ) {
+			result.bx = X;
+			result.by = Y;
+		}
+
+		// Copy over data
+		for( int dx = 0; dx < X; dx++ ) {
+		for( int dy = 0; dy < Y; dy++ ) {
+			result.set_protected_uncentered( dx, dy,
+							 get_bool_uncentered( x-cx2+dx,
+									      y-cy2+dy )
+				);
+		}
+		}
+
+		return result;
 	}
 };
 typedef grid<N,N> big_grid;
@@ -435,15 +488,24 @@ big_grid all_alive( int delta, big_grid stop ) {
 const int BUCKETS = 1;
 const int CODE5   = 38183849;
 const int ENTRIES = 2;
-const int BRAIN = BUCKETS * CODE5 * ENTRIES;
+const int BRAIN = DELTA * BUCKETS * CODE5 * ENTRIES;
 
 struct brain_data {
 	int *data;
 
 	brain_data( ) {
-		int fd = open( "brain", O_RDWR | O_CREAT, S_IRUSR | S_IWUSR );
+		int fd;
+		if( (fd = open( "data/brain", O_RDWR | O_CREAT, S_IRUSR | S_IWUSR )) == -1 ) {
+			cerr << "Failed to open mmap file.\n";
+			exit(10);
+		}
 		data = (int*)mmap( 0, BRAIN * sizeof(int),
-				   PROT_WRITE, MAP_FILE | MAP_PRIVATE, fd, 0 );
+				   PROT_READ | PROT_WRITE,
+				   MAP_FILE  | MAP_SHARED, fd, 0 );
+		if( data == MAP_FAILED ) {
+			cerr << "mmap failed.\n";
+			exit(20);
+		}
 		close(fd);
 	}
 
@@ -451,43 +513,62 @@ struct brain_data {
 		munmap( data, BRAIN * sizeof(int));
 	}
 
-	int& get( const int& bucket, const encoding& code, const bool entry ) {
-		int index = bucket * CODE5 * ENTRIES + code * ENTRIES + entry;
+	int& get( const int& delta, const int& bucket, const encoding& code, const bool entry ) {
+		int index = (((delta-1) * BUCKETS + bucket) * CODE5 + code) * ENTRIES + entry;
 		return data[index];
 	}
 } brain;
 
 void train() {
-	brain.get( 0, 5, 1 ) = 10;
+}
+
+big_grid predict( int delta, big_grid stop ) {
+	big_grid alive;
+	for( int x = 0; x < N; x++ ) {
+	for( int y = 0; y < N; y++ ) {
+		alive.set_uncentered(x,y,true);
+	}
+	}
+	return alive;
 }
 
 void test( ) {
 	vector<predictor> ps;
 
-	cout << "dead\t";
-	ps.push_back( all_dead );
-
 	cout << "stop\t";
 	ps.push_back( start_at_stop );
 
-	cout << "alive\t";
-	ps.push_back( all_alive );
+	cout << "dead\t";
+	ps.push_back( all_dead );
+
+	cout << "first\t";
+	ps.push_back( predict );
 
 	cout << "\n";
-	while( 1 ) {
-		vector<double> result = grade_many( ps, 50000 );
-		for( int i = 0; i < (int)result.size(); i++ ) {
-			cout << setprecision(5) << result[i] << "\t";
-		}
-		cout << endl;
+
+	vector<double> result = grade_many( ps, 100000 );
+	for( int i = 0; i < (int)result.size(); i++ ) {
+		cout << setprecision(5) << result[i] << "\t";
 	}
 }
 
 int main( ) {
 	init();
 
-	train();
-	test();
+//	train();
+//	test();
+
+	encoding e = uniform_smallint( 1 << 16 );
+	grid<4,4> g = decode<4,4>( e );
+
+	cout << g;
+
+	for( int x = -1; x <= 5; x++ ) {
+	for( int y = -1; y <= 5; y++ ) {
+		grid<3,3> sg = g.subgrid<3,3>( x, y, 1, 1 );
+		cout << x << " " << y << "\n" << sg;
+	}
+	}
 
 	return 0;
 }
