@@ -564,7 +564,7 @@ big_grid predict( int delta, big_grid stop ) {
 		int alive = brain.get( delta, 0, e, true  );
 
 		// The following reflects a minimal 1/7 prior probability of being dead
-//		dead += 5;
+		dead += 5;
 
 		if( alive > dead ) {
 			result.set_uncentered( x, y, true );
