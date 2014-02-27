@@ -173,19 +173,18 @@ grid<X,Y> evolve_once( const grid<X,Y>& start ) {
 	return stop;
 }
 /*
-  Evolve a position k times and return a vector of length k+1, with
-  index 0 corresponding to the original position.
+  Evolve a position k times and record the results in an
+  already-allocated array of size k+1.  Index 0 corresponds to the
+  original position, which has already been assigned.
+
+  (We need this for a specific case later, so as to avoid copying and
+  memory allocations.)
 */
 template <int X, int Y>
-vector<grid<X,Y> > evolve_many( const grid<X,Y>& start, const int& k ) {
-	vector<grid<X,Y> > result;
-	result.push_back( start );
-	grid<X,Y> temp = start;
+void evolve_many_special( grid<X,Y>* dest, const int& k ) {
 	for( int i = 0; i < k; i++ ) {
-		temp = evolve_once(temp);
-		result.push_back(temp);
+		dest[i+1] = evolve_once(dest[i]);
 	}
-	return result;
 }
 
 /*
@@ -288,7 +287,7 @@ grid<X,Y> decode( const encoding& f ) {
   Routines to help with randomness.
  */
 double uniform_real( ) {
-	return ((double)rand()/(double)RAND_MAX);
+	return (double)rand()/(double)RAND_MAX;
 }
 double uniform_real( double max ) {
 	return max * uniform_real();
@@ -296,8 +295,16 @@ double uniform_real( double max ) {
 double uniform_real( double min, double max ) {
 	return min + uniform_real( max-min );
 }
+/* max is always excluded */
 int uniform_smallint( int max ) {
 	return rand() % max; // may be a bad idea for large values of max
+}
+/* max is always excluded */
+int uniform_smallint( int min, int max ) {
+	return min + uniform_smallint(max-min);
+}
+bool bernoulli( double p ) {
+	return uniform_real() < p;
 }
 
 /*
@@ -307,13 +314,62 @@ int uniform_smallint( int max ) {
 const int BURN  = 5; // number of steps to burn in each grid
 const int DELTA = 5; // maximum value of delta
 const int GRIDS = BURN + DELTA + 1;
-struct training_grids {
+struct training_data {
 	double p;
 	big_grid gs[GRIDS];
 
-	training_grids() {
+	/*
+	  Generate a random position according to the Bernoulli(p)
+	  with p uniform model, and evolve it BURN+DELTA steps.
+
+	  Empty grids are not filtered out at this point.
+	 */
+	training_data() {
+		// Zero out some information just in case, although we
+		// don't use it
+		for( int i = 0; i < GRIDS; i++ ) {
+			gs[i].bx = 0;
+			gs[i].by = 0;
+			gs[i].cx = 0;
+			gs[i].cy = 0;
+		}
+
+		p = uniform_real( 0.01, 0.99 );
+		for( int x = 0; x < N; x++ ) {
+		for( int y = 0; y < N; y++ ) {
+			gs[0].set_uncentered( x, y, bernoulli(p) );
+		}
+		}
+		evolve_many_special( gs, BURN+DELTA );
 	}
 };
+
+struct testing_data {
+	int delta;
+	big_grid start;
+	big_grid stop;
+
+	testing_data( training_data d ) {
+		delta = uniform_smallint( 1, 5+1 ); // remember that the right end-point is excluded
+		start = d.gs[BURN];
+		stop  = d.gs[BURN+delta];
+	}
+
+	testing_data( ) : testing_data(training_data()) {
+	}
+};
+
+// return the number of incorrect cells guessed
+int grade( testing_data d, big_grid guess ) {
+	int result = 0;
+	for( int x = 0; x < N; x++ ) {
+	for( int y = 0; y < N; y++ ) {
+		result += (d.start.get_bool_uncentered(x,y)
+			   !=guess.get_bool_uncentered(x,y) );
+	}
+	}
+	return result;
+}
 
 int main( ) {
 	init();
