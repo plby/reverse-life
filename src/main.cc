@@ -304,7 +304,8 @@ int uniform_smallint( int min, int max ) {
 	return min + uniform_smallint(max-min);
 }
 bool bernoulli( double p ) {
-	return uniform_real() < p;
+	double t = uniform_real();
+	return t < p;
 }
 
 /*
@@ -349,13 +350,16 @@ struct testing_data {
 	big_grid start;
 	big_grid stop;
 
-	testing_data( training_data d ) {
-		delta = uniform_smallint( 1, 5+1 ); // remember that the right end-point is excluded
-		start = d.gs[BURN];
-		stop  = d.gs[BURN+delta];
-	}
-
-	testing_data( ) : testing_data(training_data()) {
+	/*
+	  It is in this step and this step only that we filter out empty grids.
+	*/
+	testing_data( ) {
+		do {
+			training_data d;
+			delta = uniform_smallint( 1, 5+1 ); // remember that the right end-point is excluded
+			start = d.gs[BURN];
+			stop  = d.gs[BURN+delta];
+		} while( stop.g.count() == 0 );
 	}
 };
 

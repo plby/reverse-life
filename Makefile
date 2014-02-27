@@ -1,5 +1,8 @@
 all: bin/main bin/maino
 
+bin:
+	mkdir bin
+
 bin/main: src/main.cc
 	g++ -Wall -g -std=c++11 src/main.cc -o bin/main
 
