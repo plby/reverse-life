@@ -524,11 +524,18 @@ struct brain_data {
 } brain;
 
 void train_once( training_data d ) {
+	// Find maximum delta without dead grid
+	int alive;
+	for( alive = 1; alive <= DELTA; alive++ ) {
+		if( d.gs[BURN+alive].g.count() == 0 )
+			break;
+	}
+
 	for( int x = 0; x < N; x++ ) {
 	for( int y = 0; y < N; y++ ) {
 		bool truth = d.gs[BURN].get_bool_uncentered( x, y );
 
-		for( int delta = 1; delta <= DELTA; delta++ ) {
+		for( int delta = 1; delta <= alive; delta++ ) {
 			grid<5,5> g = d.gs[BURN+delta].subgrid<5,5>( x, y, 2, 2 );
 			encoding e = encode<5,5>( g );
 
