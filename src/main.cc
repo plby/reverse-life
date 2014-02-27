@@ -2,6 +2,7 @@
 #include <vector>
 #include <cassert>
 #include <cstdint>
+#include <iomanip>
 #include <iostream>
 using namespace std;
 
@@ -326,15 +327,6 @@ struct training_data {
 	  Empty grids are not filtered out at this point.
 	 */
 	training_data() {
-		// Zero out some information just in case, although we
-		// don't use it
-		for( int i = 0; i < GRIDS; i++ ) {
-			gs[i].bx = 0;
-			gs[i].by = 0;
-			gs[i].cx = 0;
-			gs[i].cy = 0;
-		}
-
 		p = uniform_real( 0.01, 0.99 );
 		for( int x = 0; x < N; x++ ) {
 		for( int y = 0; y < N; y++ ) {
@@ -363,8 +355,17 @@ struct testing_data {
 	}
 };
 
-// return the number of incorrect cells guessed
-int grade( testing_data d, big_grid guess ) {
+/*
+  C++ doesn't have first-class function objects, and I don't want to
+  wrap this into a class, so a predictor is just a typedef to a
+  function pointer.
+*/
+typedef big_grid (*predictor)( int, big_grid );
+
+/*
+  Return the number of incorrect cells guessed
+*/
+int grade_once( testing_data d, big_grid guess ) {
 	int result = 0;
 	for( int x = 0; x < N; x++ ) {
 	for( int y = 0; y < N; y++ ) {
@@ -374,9 +375,76 @@ int grade( testing_data d, big_grid guess ) {
 	}
 	return result;
 }
+int grade_once( testing_data d, predictor p ) {
+	big_grid guess = p( d.delta, d.stop );
+	return grade_once( d, guess );
+}
+
+/*
+  Grade some prediction functions
+*/
+vector<double> grade_many( vector<predictor> ps, int trials = 100000 ) {
+	int P = ps.size();
+	vector<int> wrong( P );
+	vector<int> total( P );
+	for( int i = 0; i < trials; i++ ) {
+		for( int j = 0; j < P; j++ ) {
+			testing_data d;
+			wrong[j] += grade_once( d, ps[j] );
+			total[j] += M;
+		}
+	}
+	vector<double> result( P );
+	for( int j = 0; j < P; j++ ) {
+		result[j] = (double)(wrong[j]) / (double)(total[j]);
+	}
+	return result;
+}
+
+/*
+  Benchmark predictors
+*/
+big_grid all_dead( int delta, big_grid stop ) {
+	big_grid dead;
+	return dead;
+}
+
+big_grid start_at_stop( int delta, big_grid stop ) {
+	return stop;
+}
+
+big_grid all_alive( int delta, big_grid stop ) {
+	big_grid alive;
+	for( int x = 0; x < N; x++ ) {
+	for( int y = 0; y < N; y++ ) {
+		alive.set_uncentered(x,y,true);
+	}
+	}
+	return alive;
+}
 
 int main( ) {
 	init();
+
+	vector<predictor> ps;
+
+	cout << "dead\t";
+	ps.push_back( all_dead );
+
+	cout << "stop\t";
+	ps.push_back( start_at_stop );
+
+	cout << "alive\t";
+	ps.push_back( all_alive );
+
+	cout << "\n";
+	while( 1 ) {
+		vector<double> result = grade_many( ps, 100000 );
+		for( int i = 0; i < (int)result.size(); i++ ) {
+			cout << setprecision(5) << result[i] << "\t";
+		}
+		cout << endl;
+	}
 
 	return 0;
 }
