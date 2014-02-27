@@ -16,6 +16,9 @@ using namespace std;
 const int N = 20;
 const int M = N * N;
 
+const int TEST  = 50000;
+const int TRAIN = 500;
+
 /*
   We precompute a lookup table for the game of life function for
   speed's sake.
@@ -116,7 +119,7 @@ struct grid {
 		return get_raw_uncentered( x+cx, y+cy );
 	}
 
-	void set_protected_uncentered( const int& x, const int& y, const bool& v ) {
+	void set_safe_uncentered( const int& x, const int& y, const bool& v ) {
 		if( inside_uncentered(x,y) )
 			g.set( x*Y + y, v );
 	}
@@ -166,9 +169,9 @@ struct grid {
 		// Copy over data
 		for( int dx = 0; dx < X; dx++ ) {
 		for( int dy = 0; dy < Y; dy++ ) {
-			result.set_protected_uncentered( dx, dy,
-							 get_bool_uncentered( x-cx2+dx,
-									      y-cy2+dy )
+			result.set_safe_uncentered( dx, dy,
+						    get_bool_uncentered( x-cx2+dx,
+									 y-cy2+dy )
 				);
 		}
 		}
@@ -519,17 +522,47 @@ struct brain_data {
 	}
 } brain;
 
-void train() {
+void train_once( training_data d ) {
+	for( int x = 0; x < N; x++ ) {
+	for( int y = 0; y < N; y++ ) {
+		bool truth = d.gs[BURN].get_bool_uncentered( x, y );
+
+		for( int delta = 1; delta <= DELTA; delta++ ) {
+			grid<5,5> g = d.gs[BURN+delta].subgrid<5,5>( x, y, 2, 2 );
+			encoding e = encode<5,5>( g );
+
+			brain.get( delta, 0, e, truth )++;
+		}
+	}
+	}
+}
+void train_many( ) {
+	for( int i = 0; i < TRAIN; i++ ) {
+		cout << i << "\n";
+		training_data d;
+		train_once( d );
+	}
 }
 
 big_grid predict( int delta, big_grid stop ) {
-	big_grid alive;
+	big_grid result;
 	for( int x = 0; x < N; x++ ) {
 	for( int y = 0; y < N; y++ ) {
-		alive.set_uncentered(x,y,true);
+		grid<5,5> g = result.subgrid<5,5>( x, y, 2, 2 );
+		encoding e = encode<5,5>( g );
+
+		int dead  = brain.get( delta, 0, e, false );
+		int alive = brain.get( delta, 0, e, true  );
+
+		// The following reflects a minimal 1/7 prior probability of being dead
+		dead += 5;
+
+		if( alive > dead ) {
+			result.set_uncentered( x, y, true );
+		}
 	}
 	}
-	return alive;
+	return result;
 }
 
 void test( ) {
@@ -541,12 +574,12 @@ void test( ) {
 	cout << "dead\t";
 	ps.push_back( all_dead );
 
-	cout << "first\t";
+	cout << "predict\t";
 	ps.push_back( predict );
 
 	cout << "\n";
 
-	vector<double> result = grade_many( ps, 100000 );
+	vector<double> result = grade_many( ps, TEST );
 	for( int i = 0; i < (int)result.size(); i++ ) {
 		cout << setprecision(5) << result[i] << "\t";
 	}
@@ -555,20 +588,8 @@ void test( ) {
 int main( ) {
 	init();
 
-//	train();
-//	test();
-
-	encoding e = uniform_smallint( 1 << 16 );
-	grid<4,4> g = decode<4,4>( e );
-
-	cout << g;
-
-	for( int x = -1; x <= 5; x++ ) {
-	for( int y = -1; y <= 5; y++ ) {
-		grid<3,3> sg = g.subgrid<3,3>( x, y, 1, 1 );
-		cout << x << " " << y << "\n" << sg;
-	}
-	}
+	train_many();
+	test();
 
 	return 0;
 }
