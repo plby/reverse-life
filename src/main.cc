@@ -450,8 +450,8 @@ vector<double> grade_many( vector<predictor> ps, int trials = 100000 ) {
 	vector<int> wrong( P );
 	vector<int> total( P );
 	for( int i = 0; i < trials; i++ ) {
+		testing_data d;
 		for( int j = 0; j < P; j++ ) {
-			testing_data d;
 			wrong[j] += grade_once( d, ps[j] );
 			total[j] += M;
 		}
@@ -557,7 +557,7 @@ big_grid predict( int delta, big_grid stop ) {
 	big_grid result;
 	for( int x = 0; x < N; x++ ) {
 	for( int y = 0; y < N; y++ ) {
-		grid<5,5> g = result.subgrid<5,5>( x, y, 2, 2 );
+		grid<5,5> g = stop.subgrid<5,5>( x, y, 2, 2 );
 		encoding e = encode<5,5>( g );
 
 		int dead  = brain.get( delta, 0, e, false );
