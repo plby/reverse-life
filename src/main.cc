@@ -61,12 +61,12 @@ void init( ) {
 
 template <int X, int Y>
 struct grid {
-	// (0,0) in our x-y coordinate system corresponds to (cx,cy)
-	// in the usual system with (0,0) at the corner
+	/* (0,0) in our x-y coordinate system corresponds to (cx,cy)
+	   in the usual system with (0,0) at the corner */
 	int cx, cy;
 
-	// this represents how much of the grid is "out of bounds", in
-	// the manner described above
+	/* This represents how much of the grid is "out of bounds", in
+	   the manner described above */
 	int bx, by;
 
 	bitset<X*Y> g;
@@ -117,6 +117,7 @@ struct grid {
 		set_uncentered( x+cx, y+cy, v );
 	}
 };
+typedef grid<N,N> big_grid;
 typedef uint32_t encoding;
 
 template <int X, int Y>
@@ -171,8 +172,10 @@ grid<X,Y> evolve_once( const grid<X,Y>& start ) {
 
 	return stop;
 }
-// Evolve a position k times and return a vector of length k+1, with
-// index 0 corresponding to the original position.
+/*
+  Evolve a position k times and return a vector of length k+1, with
+  index 0 corresponding to the original position.
+*/
 template <int X, int Y>
 vector<grid<X,Y> > evolve_many( const grid<X,Y>& start, const int& k ) {
 	vector<grid<X,Y> > result;
@@ -280,6 +283,37 @@ grid<X,Y> decode( const encoding& f ) {
 	g.by = Y;
 	return g;
 }
+
+/*
+  Routines to help with randomness.
+ */
+double uniform_real( ) {
+	return ((double)rand()/(double)RAND_MAX);
+}
+double uniform_real( double max ) {
+	return max * uniform_real();
+}
+double uniform_real( double min, double max ) {
+	return min + uniform_real( max-min );
+}
+int uniform_smallint( int max ) {
+	return rand() % max; // may be a bad idea for large values of max
+}
+
+/*
+  This data structure contains the information necessary for training,
+  and a subset of it is useful for testing.
+*/
+const int BURN  = 5; // number of steps to burn in each grid
+const int DELTA = 5; // maximum value of delta
+const int GRIDS = BURN + DELTA + 1;
+struct training_grids {
+	double p;
+	big_grid gs[GRIDS];
+
+	training_grids() {
+	}
+};
 
 int main( ) {
 	init();
