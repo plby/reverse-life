@@ -6,10 +6,15 @@
 #include <iostream>
 using namespace std;
 
+/* mmap! */
+#include <sys/mman.h>
+#include <fcntl.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <unistd.h>
+
 const int N = 20;
 const int M = N * N;
-
-const int CODE5 = 38183849;
 
 /*
   We precompute a lookup table for the game of life function for
@@ -423,9 +428,40 @@ big_grid all_alive( int delta, big_grid stop ) {
 	return alive;
 }
 
-int main( ) {
-	init();
+/*
+  This is the first non-trivial predictor.  It uses mmap to manage its
+  data representation.
+*/
+const int BUCKETS = 1;
+const int CODE5   = 38183849;
+const int ENTRIES = 2;
+const int BRAIN = BUCKETS * CODE5 * ENTRIES;
 
+struct brain_data {
+	int *data;
+
+	brain_data( ) {
+		int fd = open( "brain", O_RDWR | O_CREAT, S_IRUSR | S_IWUSR );
+		data = (int*)mmap( 0, BRAIN * sizeof(int),
+				   PROT_WRITE, MAP_FILE | MAP_PRIVATE, fd, 0 );
+		close(fd);
+	}
+
+	~brain_data( ) {
+		munmap( data, BRAIN * sizeof(int));
+	}
+
+	int& get( const int& bucket, const encoding& code, const bool entry ) {
+		int index = bucket * CODE5 * ENTRIES + code * ENTRIES + entry;
+		return data[index];
+	}
+} brain;
+
+void train() {
+	brain.get( 0, 5, 1 ) = 10;
+}
+
+void test( ) {
 	vector<predictor> ps;
 
 	cout << "dead\t";
@@ -439,12 +475,19 @@ int main( ) {
 
 	cout << "\n";
 	while( 1 ) {
-		vector<double> result = grade_many( ps, 100000 );
+		vector<double> result = grade_many( ps, 50000 );
 		for( int i = 0; i < (int)result.size(); i++ ) {
 			cout << setprecision(5) << result[i] << "\t";
 		}
 		cout << endl;
 	}
+}
+
+int main( ) {
+	init();
+
+	train();
+	test();
 
 	return 0;
 }
