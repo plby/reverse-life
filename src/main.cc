@@ -5,6 +5,7 @@
 #include <iomanip>
 #include <fstream>
 #include <iostream>
+#include <algorithm>
 using namespace std;
 
 /* mmap! */
@@ -193,6 +194,26 @@ bool operator != ( const grid<X,Y>& g, const grid<X,Y>& h ) {
 		return true;
 	return g.g != h.g;
 }
+template <int X, int Y>
+bool operator == ( const grid<X,Y>& g, const grid<X,Y>& h ) {
+	return not( g != h);
+}
+template <int X, int Y>
+bool operator < ( const grid<X,Y>& g, const grid<X,Y>& h ) {
+	if( g.bx != h.bx )
+		return g.bx < h.bx;
+	if( g.by != h.by )
+		return g.by < h.by;
+	
+	for( int x = 0; x < X; x++ ) {
+	for( int y = 0; y < Y; y++ ) {
+		if( g.get_int_uncentered(x,y) != h.get_int_uncentered(x,y) ) {
+			return g.get_int_uncentered(x,y) < h.get_int_uncentered(x,y);
+		}
+	}
+	}
+	return false;
+}
 
 template <int X, int Y>
 ostream& operator << ( ostream& out, const grid<X,Y>& g ) {
@@ -250,6 +271,67 @@ void evolve_many_special( grid<X,Y>* dest, const int& k ) {
 	for( int i = 0; i < k; i++ ) {
 		dest[i+1] = evolve_once(dest[i]);
 	}
+}
+
+/*
+  Very simple function to remove duplicates from a vector.
+*/
+template<typename t>
+void sort_unique( vector<t>& v ) {
+	sort( v.begin(), v.end() );
+	v.erase( unique( v.begin(), v.end() ), v.end() );
+}
+
+/*
+  Return all of the symmetrical versions of a given grid.
+*/
+template <int X, int Y>
+grid<Y,X> flip_grid( const grid<X,Y>& in ) {
+	grid<Y,X> out;
+	out.by = in.bx;
+	out.bx = in.by;
+	out.cy = in.cx;
+	out.cx = in.cy;
+	for( int x = 0; x < X; x++ ) {
+	for( int y = 0; y < Y; y++ ) {
+		out.set_uncentered( y, x, in.get_bool_uncentered( x, y ) );
+	}
+	}
+	return out;
+}
+
+template <int X, int Y>
+grid<Y,X> rotate_grid( const grid<X,Y>& in ) {
+	grid<Y,X> out;
+	out.by = +in.bx;
+	out.bx = -in.by;
+	out.cy = in.cx;
+	out.cx = (Y-1)-in.cy;
+	for( int x = 0; x < X; x++ ) {
+	for( int y = 0; y < Y; y++ ) {
+		out.set_uncentered( (Y-1)-y, x, in.get_bool_uncentered( x, y ) );
+	}
+	}
+	return out;
+}
+
+template <int X>
+vector<grid<X,X> > symmetric( const grid<X,X>& first ) {
+	vector<grid<X,X> > result;
+
+	grid<X,X> temp = first;
+	for( int i = 0; i < 2; i++ ) {
+		result.push_back( temp );
+		for( int j = 0; j < 3; j++ ) { // the 3 is a super small optimization
+			temp = rotate_grid( temp );
+			result.push_back( temp );
+		}
+		if( i == 0 )
+			temp = flip_grid( temp );
+	}
+
+	sort_unique( result );
+	return result;
 }
 
 /*
@@ -555,6 +637,10 @@ void train_many( ) {
 	}
 }
 
+int symmetrical_lookup( int delta, int bucket, encoding e, bool entry ) {
+	return brain.get( delta, bucket, e, entry );
+}
+
 big_grid predict( int delta, big_grid stop ) {
 	big_grid result;
 	for( int x = 0; x < N; x++ ) {
@@ -562,8 +648,8 @@ big_grid predict( int delta, big_grid stop ) {
 		grid<5,5> g = stop.subgrid<5,5>( x, y, 2, 2 );
 		encoding e = encode<5,5>( g );
 
-		int dead  = brain.get( delta, 0, e, false );
-		int alive = brain.get( delta, 0, e, true  );
+		int dead  = symmetrical_lookup( delta, 0, e, false );
+		int alive = symmetrical_lookup( delta, 0, e, true  );
 
 		// The following reflects a minimal 1/7 prior probability of being dead
 		dead += 5;
@@ -665,7 +751,16 @@ int main( ) {
 
 	//	train_many();
 	//	test();
-	submit( predict );
+	//	submit( predict );
+
+	encoding e = uniform_smallint( 1 << 16 );
+	e = (1 << 16) + 25;
+	grid<4,4> g = decode<4,4>( e );
+
+	vector<grid<4,4> > v = symmetric( g );
+	for( int i = 0; i < (int)v.size(); i++ ) {
+		cout << v[i] << "\n";
+	}
 
 	return 0;
 }
