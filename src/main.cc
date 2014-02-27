@@ -17,7 +17,8 @@ const int N = 20;
 const int M = N * N;
 
 const int TEST  = 50000;
-const int TRAIN = 500;
+const int TRAIN = 10000;
+const int REPORT = 100;
 
 /*
   We precompute a lookup table for the game of life function for
@@ -538,7 +539,8 @@ void train_once( training_data d ) {
 }
 void train_many( ) {
 	for( int i = 0; i < TRAIN; i++ ) {
-		cout << i << "\n";
+		if( (i % REPORT) == 0 )
+			cout << i << "\n";
 		training_data d;
 		train_once( d );
 	}
