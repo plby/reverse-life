@@ -1,4 +1,5 @@
 #include <bitset>
+#include <vector>
 #include <cassert>
 #include <cstdint>
 #include <iostream>
@@ -165,17 +166,21 @@ grid<X,Y> evolve_once( const grid<X,Y>& start ) {
 		}
 		}
 		stop.set_uncentered( x, y, life_step[t] );
-		cout << t << " " << life_step[t] << "\n";
 	}
 	}
 
 	return stop;
 }
+// Evolve a position k times and return a vector of length k+1, with
+// index 0 corresponding to the original position.
 template <int X, int Y>
-grid<X,Y> evolve_many( const grid<X,Y>& start, const int& k ) {
-	grid<X,Y> result = start;
+vector<grid<X,Y> > evolve_many( const grid<X,Y>& start, const int& k ) {
+	vector<grid<X,Y> > result;
+	result.push_back( start );
+	grid<X,Y> temp = start;
 	for( int i = 0; i < k; i++ ) {
-		result = evolve_once(result);
+		temp = evolve_once(temp);
+		result.push_back(temp);
 	}
 	return result;
 }
@@ -278,16 +283,6 @@ grid<X,Y> decode( const encoding& f ) {
 
 int main( ) {
 	init();
-
-	int i = rand() % (1 << 16);
-	grid<4,4> g = decode<4,4>(i);
-	cout << g << "\n";
-
-	g = evolve_once(g);
-	cout << g << "\n";
-
-	g = evolve_once(g);
-	cout << g << "\n";
 
 	return 0;
 }
