@@ -637,6 +637,13 @@ struct brain_data {
 			exit(20);
 		}
 		close(fd);
+
+		// dummy read
+		int entries = 0;
+		for( int i = 0; i < BRAIN; i++ ) {
+			entries += data[i];
+		}
+		cerr << entries << " entries currently in the brain.\n";
 	}
 
 	~brain_data( ) {
