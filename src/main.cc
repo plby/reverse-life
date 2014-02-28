@@ -20,7 +20,7 @@ const int M = N * N;
 
 const int SUBMIT = 50000;
 const int TEST   = 50000;
-const int TRAIN  = 50000 * 15;
+const int TRAIN  = 50000;
 
 const int TEST_REPORT  = 10000;
 const int TRAIN_REPORT = 1000;
@@ -584,10 +584,40 @@ big_grid all_alive( int delta, big_grid stop ) {
   This is the first non-trivial predictor.  It uses mmap to manage its
   data representation.
 */
-const int BUCKETS = 1;
+const int BUCKETS = 4;
 const int CODE5   = 38183849;
 const int ENTRIES = 2;
 const int BRAIN = DELTA * BUCKETS * CODE5 * ENTRIES;
+
+const int MAX_BUCKETS = 16;
+int bucket( double p ) {
+	double cutoffs[MAX_BUCKETS] = 
+	{
+		0.116873,
+		0.164699,
+		0.211544,
+		0.258496,
+		0.305516,
+		0.352168,
+		0.398829,
+		0.445686,
+		0.492449,
+		0.539146,
+		0.585685,
+		0.632559,
+		0.679692,
+		0.728846,
+		0.786992,
+		1
+	};
+	int result;
+	for( result = 0;
+	     result < BUCKETS-1 and p > cutoffs[(result+1) * MAX_BUCKETS/BUCKETS - 1];
+	     result++ ) {
+		// empty loop
+	}
+	return result;
+}
 
 struct brain_data {
 	int *data;
@@ -634,7 +664,7 @@ void train_once( training_data d ) {
 			grid<5,5> g = d.gs[BURN+delta].subgrid<5,5>( x, y, 2, 2 );
 			encoding e = encode<5,5>( g );
 
-			brain.get( delta, 0, e, truth )++;
+			brain.get( delta, bucket(d.p), e, truth )++;
 		}
 	}
 	}
@@ -664,6 +694,50 @@ int symmetrical_lookup( int delta, int bucket, grid<5,5> g, bool entry ) {
 }
 
 big_grid predict( int delta, big_grid stop ) {
+	/*
+	  Predict the bucket for p first using naive Bayes.
+	*/
+	double log_likelihood[BUCKETS];
+	for( int i = 0; i < BUCKETS; i++ )
+		log_likelihood[i] = 0;
+
+	for( int x = 0; x < N; x++ ) {
+	for( int y = 0; y < N; y++ ) {
+		grid<5,5> g = stop.subgrid<5,5>( x, y, 2, 2 );
+		for( int i = 0; i < BUCKETS; i++ ) {
+			int dead  = symmetrical_lookup( delta, i, g, false );
+			int alive = symmetrical_lookup( delta, i, g, true  );
+			int total = dead + alive;
+			log_likelihood[i] += log(1 + total);
+		}
+	}
+	}	
+
+	// Normalize a bit to keep things in a manageable range
+	double biggest = 0;
+	for( int i = 0; i < BUCKETS; i++ ) {
+		if( biggest < log_likelihood[i] )
+			biggest = log_likelihood[i];
+	}
+	for( int i = 0; i < BUCKETS; i++ ) {
+		log_likelihood[i] -= biggest;
+	}
+	double likelihood[BUCKETS];
+	for( int i = 0; i < BUCKETS; i++ ) {
+		likelihood[i] = exp(log_likelihood[i]);
+	}
+
+	for( int i = 0; i < BUCKETS; i++ ) {
+		cout << likelihood[i] << " ";
+	}
+
+	big_grid z;
+	return z;
+
+	/*
+	  Now use that information to make a better prediction for
+	  each cell.
+	*/
 	big_grid result;
 	for( int x = 0; x < N; x++ ) {
 	for( int y = 0; y < N; y++ ) {
@@ -768,38 +842,34 @@ void submit( predictor p ) {
 	}
 }
 
-void rank_ps( int count ) {
-	vector<double> ps;
+void test_ps( int count ) {
 	for( int i = 0; i < count; i++ ) {
 		double p;
+		int delta;
+		big_grid start;
 		big_grid stop;
 		do {
 			training_data d;
 			p = d.p;
-			int delta = uniform_smallint( 1, 5+1 ); // remember that the right end-point is excluded
-			stop = d.gs[BURN+delta];
+			delta = uniform_smallint( 1, 5+1 ); // remember that the right end-point is excluded
+			start = d.gs[BURN];
+			stop  = d.gs[BURN+delta];
 		} while( stop.g.count() == 0 );
-		ps.push_back( p );
-	}
 
-	sort( ps.begin(), ps.end() );
-
-	cout << "sixteenth-tiles:\n";
-	cout << "0\t0\n";
-	for( int i = 1; i < 16; i++ ) {
-		cout << i << "\t" << ps[ i * count / 8 ] << "\n";
+		// See if we can determine p !
+		predict( delta, stop );
+		cout << bucket(p) << "\n";
 	}
-	cout << "16\t1\n";
 }
 
 int main( ) {
 	init();
 
-	rank_ps( 1000000 );
-
-//	train_many();
+	train_many();
 //	test();
 //	submit( predict );
+
+	test_ps( 1 );
 
 	return 0;
 }
