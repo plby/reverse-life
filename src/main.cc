@@ -491,7 +491,7 @@ struct testing_data {
 	big_grid stop;
 
 	/*
-	  It is in this step and this step only that we filter out empty grids.
+	  One reasonably important thing here is we filter out empty grids.
 	*/
 	testing_data( ) {
 		do {
@@ -768,12 +768,38 @@ void submit( predictor p ) {
 	}
 }
 
+void rank_ps( int count ) {
+	vector<double> ps;
+	for( int i = 0; i < count; i++ ) {
+		double p;
+		big_grid stop;
+		do {
+			training_data d;
+			p = d.p;
+			int delta = uniform_smallint( 1, 5+1 ); // remember that the right end-point is excluded
+			stop = d.gs[BURN+delta];
+		} while( stop.g.count() == 0 );
+		ps.push_back( p );
+	}
+
+	sort( ps.begin(), ps.end() );
+
+	cout << "sixteenth-tiles:\n";
+	cout << "0\t0\n";
+	for( int i = 1; i < 16; i++ ) {
+		cout << i << "\t" << ps[ i * count / 8 ] << "\n";
+	}
+	cout << "16\t1\n";
+}
+
 int main( ) {
 	init();
 
-	//	train_many();
-	test();
-	//	submit( predict );
+	rank_ps( 1000000 );
+
+//	train_many();
+//	test();
+//	submit( predict );
 
 	return 0;
 }
