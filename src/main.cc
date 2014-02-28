@@ -727,6 +727,13 @@ big_grid predict( int delta, big_grid stop ) {
 	for( int i = 0; i < BUCKETS; i++ ) {
 		likelihood[i] = exp(log_likelihood[i]);
 	}
+	double sum = 0;
+	for( int i = 0; i < BUCKETS; i++ ) {
+		sum += likelihood[i];
+	}
+	for( int i = 0; i < BUCKETS; i++ ) {
+		likelihood[i] /= sum;
+	}
 
 	for( int i = 0; i < BUCKETS; i++ ) {
 		cout << likelihood[i] << " ";
