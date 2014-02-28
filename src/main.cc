@@ -5,6 +5,7 @@
 #include <iomanip>
 #include <fstream>
 #include <iostream>
+#include <algorithm>
 using namespace std;
 
 /* mmap! */
@@ -20,7 +21,9 @@ const int M = N * N;
 const int SUBMIT = 50000;
 const int TEST   = 50000;
 const int TRAIN  = 50000 * 15;
-const int REPORT = 1000;
+
+const int TEST_REPORT  = 10000;
+const int TRAIN_REPORT = 1000;
 
 /*
   We precompute a lookup table for the game of life function for
@@ -193,6 +196,26 @@ bool operator != ( const grid<X,Y>& g, const grid<X,Y>& h ) {
 		return true;
 	return g.g != h.g;
 }
+template <int X, int Y>
+bool operator == ( const grid<X,Y>& g, const grid<X,Y>& h ) {
+	return not( g != h);
+}
+template <int X, int Y>
+bool operator < ( const grid<X,Y>& g, const grid<X,Y>& h ) {
+	if( g.bx != h.bx )
+		return g.bx < h.bx;
+	if( g.by != h.by )
+		return g.by < h.by;
+	
+	for( int x = 0; x < X; x++ ) {
+	for( int y = 0; y < Y; y++ ) {
+		if( g.get_int_uncentered(x,y) != h.get_int_uncentered(x,y) ) {
+			return g.get_int_uncentered(x,y) < h.get_int_uncentered(x,y);
+		}
+	}
+	}
+	return false;
+}
 
 template <int X, int Y>
 ostream& operator << ( ostream& out, const grid<X,Y>& g ) {
@@ -250,6 +273,67 @@ void evolve_many_special( grid<X,Y>* dest, const int& k ) {
 	for( int i = 0; i < k; i++ ) {
 		dest[i+1] = evolve_once(dest[i]);
 	}
+}
+
+/*
+  Very simple function to remove duplicates from a vector.
+*/
+template<typename t>
+void sort_unique( vector<t>& v ) {
+	sort( v.begin(), v.end() );
+	v.erase( unique( v.begin(), v.end() ), v.end() );
+}
+
+/*
+  Return all of the symmetrical versions of a given grid.
+*/
+template <int X, int Y>
+grid<Y,X> flip_grid( const grid<X,Y>& in ) {
+	grid<Y,X> out;
+	out.by = in.bx;
+	out.bx = in.by;
+	out.cy = in.cx;
+	out.cx = in.cy;
+	for( int x = 0; x < X; x++ ) {
+	for( int y = 0; y < Y; y++ ) {
+		out.set_uncentered( y, x, in.get_bool_uncentered( x, y ) );
+	}
+	}
+	return out;
+}
+
+template <int X, int Y>
+grid<Y,X> rotate_grid( const grid<X,Y>& in ) {
+	grid<Y,X> out;
+	out.by = +in.bx;
+	out.bx = -in.by;
+	out.cy = in.cx;
+	out.cx = (Y-1)-in.cy;
+	for( int x = 0; x < X; x++ ) {
+	for( int y = 0; y < Y; y++ ) {
+		out.set_uncentered( (Y-1)-y, x, in.get_bool_uncentered( x, y ) );
+	}
+	}
+	return out;
+}
+
+template <int X>
+vector<grid<X,X> > symmetric( const grid<X,X>& first ) {
+	vector<grid<X,X> > result;
+
+	grid<X,X> temp = first;
+	for( int i = 0; i < 2; i++ ) {
+		result.push_back( temp );
+		for( int j = 0; j < 3; j++ ) { // the 3 is a super small optimization
+			temp = rotate_grid( temp );
+			result.push_back( temp );
+		}
+		if( i == 0 )
+			temp = flip_grid( temp );
+	}
+
+	sort_unique( result );
+	return result;
 }
 
 /*
@@ -457,6 +541,15 @@ vector<double> grade_many( vector<predictor> ps, int trials = 100000 ) {
 			wrong[j] += grade_once( d, ps[j] );
 			total[j] += M;
 		}
+
+		if( TEST_REPORT > 0 and i > 0 and (i % TEST_REPORT) == 0 ) {
+			for( int j = 0; j < P; j++ ) {
+				cout << setprecision(5)
+				     << (double)(wrong[j]) / (double)(total[j])
+				     << "\t";
+			}
+			cout << "(" << i << ")\n";
+		}
 	}
 	vector<double> result( P );
 	for( int j = 0; j < P; j++ ) {
@@ -548,11 +641,26 @@ void train_once( training_data d ) {
 }
 void train_many( ) {
 	for( int i = 0; i < TRAIN; i++ ) {
-		if( (i % REPORT) == 0 )
+		if( TRAIN_REPORT > 0 and (i % TRAIN_REPORT) == 0 )
 			cout << i << "\n";
 		training_data d;
 		train_once( d );
 	}
+}
+
+int single_lookup( int delta, int bucket, grid<5,5> g, bool entry ) {
+	encoding e = encode<5,5>( g );
+	return brain.get( delta, bucket, e, entry );
+}
+
+int symmetrical_lookup( int delta, int bucket, grid<5,5> g, bool entry ) {
+	vector<grid<5,5> > syms = symmetric( g );
+
+	int result;
+	for( int i = 0; i < (int)syms.size(); i++ ) {
+		result += single_lookup( delta, bucket, syms[i], entry );
+	}
+	return result;
 }
 
 big_grid predict( int delta, big_grid stop ) {
@@ -560,10 +668,9 @@ big_grid predict( int delta, big_grid stop ) {
 	for( int x = 0; x < N; x++ ) {
 	for( int y = 0; y < N; y++ ) {
 		grid<5,5> g = stop.subgrid<5,5>( x, y, 2, 2 );
-		encoding e = encode<5,5>( g );
 
-		int dead  = brain.get( delta, 0, e, false );
-		int alive = brain.get( delta, 0, e, true  );
+		int dead  = symmetrical_lookup( delta, 0, g, false );
+		int alive = symmetrical_lookup( delta, 0, g, true  );
 
 		// The following reflects a minimal 1/7 prior probability of being dead
 		dead += 5;
@@ -594,6 +701,7 @@ void test( ) {
 	for( int i = 0; i < (int)result.size(); i++ ) {
 		cout << setprecision(5) << result[i] << "\t";
 	}
+	cout << "\n";
 }
 
 void fail_parse( string detail ) {
@@ -664,8 +772,8 @@ int main( ) {
 	init();
 
 	//	train_many();
-	//	test();
-	submit( predict );
+	test();
+	//	submit( predict );
 
 	return 0;
 }
