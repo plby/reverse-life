@@ -11,6 +11,7 @@ using namespace std;
 
 /* mmap! */
 #include <sys/mman.h>
+#include <sys/stat.h>
 #include <fcntl.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -33,7 +34,7 @@ const int TRAIN_REPORT = 1000;
 const int LIFE_TABLE = 1 << 9;
 bool life_step[LIFE_TABLE];
 
-void init( ) {
+void init_life( ) {
 	srand(0);
 
 	for( int i = 0; i < LIFE_TABLE; i++ ) {
@@ -295,6 +296,9 @@ grid<Y,X> flip_grid( const grid<X,Y>& in ) {
 	out.bx = in.by;
 	out.cy = in.cx;
 	out.cx = in.cy;
+	if( in.bx == X and in.by == Y ) {
+		return out;
+	}
 	for( int x = 0; x < X; x++ ) {
 	for( int y = 0; y < Y; y++ ) {
 		out.set_uncentered( y, x, in.get_bool_uncentered( x, y ) );
@@ -310,6 +314,10 @@ grid<Y,X> rotate_grid( const grid<X,Y>& in ) {
 	out.bx = -in.by;
 	out.cy = in.cx;
 	out.cx = (Y-1)-in.cy;
+	if( in.bx == X and in.by == Y ) {
+		out.bx = in.by;
+		return out;
+	}
 	for( int x = 0; x < X; x++ ) {
 	for( int y = 0; y < Y; y++ ) {
 		out.set_uncentered( (Y-1)-y, x, in.get_bool_uncentered( x, y ) );
@@ -431,6 +439,73 @@ grid<X,Y> decode( const encoding& f ) {
 	g.bx = X;
 	g.by = Y;
 	return g;
+}
+
+/*
+  Take advantage of symmetries by only encoding positions up to
+  symmetry.
+*/
+const int BIGCODE   = 38183849;
+const int SMALLCODE =  4793312;
+encoding *smallcode;
+void init_code( ) {
+	int fd;
+	if( (fd = open("data/codemap", O_RDWR | O_CREAT, S_IRUSR | S_IWUSR)) < 0 ) {
+		cerr << "Couldn't open data/codemap file.\n";
+		exit( 1 );
+	}
+
+	struct stat st;
+	if( fstat(fd, &st) < 0 ) {
+		cerr << "Couldn't stat data/codemap file.\n";
+		exit( 2 );
+	}
+
+	int want_len = BIGCODE*sizeof(encoding);
+	int have_len = st.st_size;
+	if( have_len != want_len ) {
+		if( ftruncate(fd, want_len) != 0 ) {
+			cerr << "Couldn't set data/codemap file size.\n";
+			exit( 3 );
+		}
+	}
+
+	smallcode = (encoding *)mmap( 0, want_len,
+				      PROT_READ | PROT_WRITE,
+				      MAP_FILE  | MAP_SHARED, fd, 0 );
+	if( smallcode == MAP_FAILED ) {
+		cerr << "Couldn't mmap data/codemap file.\n";
+		exit( 4 );
+	}
+	if( close(fd) != 0 ) {
+		cerr << "Couldn't close data/codemap file.\n";
+		exit( 5 );
+	}
+
+	if( smallcode[BIGCODE-1] == SMALLCODE-1 ) {
+		// If this is correct, then we will assume the rest of
+		// the mapping is correct to save initialization time
+		return;
+	}
+
+	// Otherwise redo the mapping
+	encoding e, k;
+	k = 1;
+	for( e = 0; e < (encoding)BIGCODE; e++ ) {
+		grid<5,5> g = decode<5,5>( e );
+		vector<grid<5,5> > syms = symmetric( g );
+
+		if( smallcode[encode<5,5>( syms[0] )] != 0 )
+			continue;
+
+		for( int i = 0; i < (int)syms.size(); i++ ) {
+			encoding f = encode<5,5>( syms[i] );
+			assert( smallcode[f] == 0 );
+			smallcode[f] = k;
+		}
+		k++;
+	}
+	assert( k == (int)SMALLCODE );
 }
 
 /*
@@ -585,10 +660,9 @@ big_grid all_alive( int delta, big_grid stop ) {
   This is the first non-trivial predictor.  It uses mmap to manage its
   data representation.
 */
-const int BUCKETS = 4;
-const int CODE5   = 38183849;
+const int BUCKETS = 1;
 const int ENTRIES = 2;
-const int BRAIN = DELTA * BUCKETS * CODE5 * ENTRIES;
+const int BRAIN = DELTA * BUCKETS * SMALLCODE * ENTRIES;
 
 const int MAX_BUCKETS = 16;
 int bucket( double p ) {
@@ -625,18 +699,42 @@ struct brain_data {
 
 	brain_data( ) {
 		int fd;
-		if( (fd = open( "data/brain", O_RDWR | O_CREAT, S_IRUSR | S_IWUSR )) == -1 ) {
-			cerr << "Failed to open mmap file.\n";
-			exit(10);
+		if( (fd = open("data/brain", O_RDWR | O_CREAT, S_IRUSR | S_IWUSR)) < 0 ) {
+			cerr << "Couldn't open data/brain file.\n";
+			exit( 1 );
 		}
-		data = (int*)mmap( 0, BRAIN * sizeof(int),
-				   PROT_READ | PROT_WRITE,
-				   MAP_FILE  | MAP_SHARED, fd, 0 );
+
+		struct stat st;
+		if( fstat(fd, &st) < 0 ) {
+			cerr << "Couldn't stat data/brain file.\n";
+			exit( 2 );
+		}
+
+		int want_len = BRAIN * sizeof(int);
+		int have_len = st.st_size;
+		if( have_len != want_len ) {
+			if( have_len > 0 ) {
+				cerr << "File data/brain is neither the expected size nor empty.\n";
+				cerr << "Expected " << want_len << "  actual " << have_len << "  (bytes)\n";
+				exit( 10 );
+			}
+			if( ftruncate(fd, want_len) != 0 ) {
+				cerr << "Couldn't set data/brain file size.\n";
+				exit( 3 );
+			}
+		}
+
+		data = (int *)mmap( 0, want_len,
+				    PROT_READ | PROT_WRITE,
+				    MAP_FILE  | MAP_SHARED, fd, 0 );
 		if( data == MAP_FAILED ) {
-			cerr << "mmap failed.\n";
-			exit(20);
+			cerr << "Couldn't mmap data/brain file.\n";
+			exit( 4 );
 		}
-		close(fd);
+		if( close(fd) != 0 ) {
+			cerr << "Couldn't close data/brain file.\n";
+			exit( 5 );
+		}
 
 		// dummy read
 		int entries = 0;
@@ -647,11 +745,14 @@ struct brain_data {
 	}
 
 	~brain_data( ) {
-		munmap( data, BRAIN * sizeof(int));
+		if( munmap(data, BRAIN * sizeof(int)) == -1 ) {
+			cerr << "Error in munmap of data/brain.\n";
+			exit( 7 );
+		}
 	}
 
 	int& get( const int& delta, const int& bucket, const encoding& code, const bool entry ) {
-		int index = (((delta-1) * BUCKETS + bucket) * CODE5 + code) * ENTRIES + entry;
+		int index = (((delta-1) * BUCKETS + bucket) * SMALLCODE + smallcode[code]) * ENTRIES + entry;
 		return data[index];
 	}
 } brain;
@@ -686,19 +787,9 @@ void train_many( ) {
 	}
 }
 
-int single_lookup( int delta, int bucket, grid<5,5> g, bool entry ) {
+int lookup( int delta, int bucket, grid<5,5> g, bool entry ) {
 	encoding e = encode<5,5>( g );
 	return brain.get( delta, bucket, e, entry );
-}
-
-int symmetrical_lookup( int delta, int bucket, grid<5,5> g, bool entry ) {
-	vector<grid<5,5> > syms = symmetric( g );
-
-	int result;
-	for( int i = 0; i < (int)syms.size(); i++ ) {
-		result += single_lookup( delta, bucket, syms[i], entry );
-	}
-	return result;
 }
 
 big_grid predict( int delta, big_grid stop ) {
@@ -713,8 +804,8 @@ big_grid predict( int delta, big_grid stop ) {
 	for( int y = 0; y < N; y++ ) {
 		grid<5,5> g = stop.subgrid<5,5>( x, y, 2, 2 );
 		for( int i = 0; i < BUCKETS; i++ ) {
-			int dead  = symmetrical_lookup( delta, i, g, false );
-			int alive = symmetrical_lookup( delta, i, g, true  );
+			int dead  = lookup( delta, i, g, false );
+			int alive = lookup( delta, i, g, true  );
 			int total = dead + alive;
 			log_likelihood[i] += log(1 + total);
 		}
@@ -758,8 +849,8 @@ big_grid predict( int delta, big_grid stop ) {
 	for( int y = 0; y < N; y++ ) {
 		grid<5,5> g = stop.subgrid<5,5>( x, y, 2, 2 );
 
-		int dead  = symmetrical_lookup( delta, 0, g, false );
-		int alive = symmetrical_lookup( delta, 0, g, true  );
+		int dead  = lookup( delta, 0, g, false );
+		int alive = lookup( delta, 0, g, true  );
 
 		// The following reflects a minimal 1/7 prior probability of being dead
 		dead += 5;
@@ -877,14 +968,19 @@ void test_ps( int count ) {
 	}
 }
 
+void init( ) {
+	init_life();
+	init_code();
+}
+
 int main( ) {
 	init();
 
-	train_many();
+//	train_many();
 //	test();
 //	submit( predict );
 
-	test_ps( 1 );
+//	test_ps( 10 );
 
 	return 0;
 }
