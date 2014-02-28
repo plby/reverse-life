@@ -24,8 +24,8 @@ const int SUBMIT = 50000;
 const int TEST   = 50000;
 const int TRAIN  = 50000;
 
-const int TEST_REPORT  = 10000;
-const int TRAIN_REPORT = 5000;
+const int TEST_REPORT  = 0;
+const int TRAIN_REPORT = 0;
 
 /*
   We precompute a lookup table for the game of life function for
@@ -976,8 +976,10 @@ void init( ) {
 int main( ) {
 	init();
 
-	train_many();
-	test();
+	while( 1 ) {
+		train_many();
+		test();
+	}
 //	submit( predict );
 
 //	test_ps( 10 );
