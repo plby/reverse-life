@@ -10,4 +10,4 @@ bin/maino: src/main.cc bin/main
 	g++ -O3 -std=c++0x src/main.cc -o bin/maino
 
 data/brain:
-	mkdir -p data/ && time head -c 1527353960 < /dev/zero > data/brain
+	mkdir -p data/ && time head -c 6109415840 < /dev/zero > data/brain
