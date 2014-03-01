@@ -991,43 +991,6 @@ void test_ps( int count ) {
 	}
 }
 
-void explore_buckets( ) {
-	unsigned int total  = 0;
-	unsigned int battle = 0;
-
-	unsigned long long int total_weighted  = 0;
-	unsigned long long int battle_weighted = 0;
-
-	for( encoding e = 0; (int)e < SMALLCODE; e++ ) {
-		for( int delta = 1; delta <=5; delta++ ) {
-			total++;
-
-			int guess[2] = {0, 0};
-			int here = 0;
-			for( int bucket = 0; bucket < BUCKETS; bucket++ ) {
-				here +=   brain.get( delta, bucket, e, false )
-					+ brain.get( delta, bucket, e, true  );
-
-				int what = predict_from_bucket( delta, bucket, e );
-				guess[what] += here;
-			}
-			total_weighted += here;
-			int minimum = min( guess[0], guess[1] );
-			if( minimum > 0 ) {
-				battle++;
-				battle_weighted += here;
-			}
-		}
-	}
-
-	cout << "  RAW\n";
-	cout << "total\t"  << total  << "\n";
-	cout << "battle\t" << battle << "\n";
-	cout << "  WEIGHTED\n";
-	cout << "total\t"  << total_weighted  << "\n";
-	cout << "battle\t" << battle_weighted << "\n";
-}
-
 void init( ) {
 	init_life();
 	init_code();
@@ -1035,8 +998,6 @@ void init( ) {
 
 int main( ) {
 	init();
-
-	explore_buckets();
 
 /*
 	while( 1 ) {
@@ -1046,7 +1007,7 @@ int main( ) {
 */
 //	submit( predict );
 
-//	test_ps( 10 );
+	test_ps( 10 );
 
 	return 0;
 }
