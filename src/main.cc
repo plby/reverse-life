@@ -661,35 +661,25 @@ big_grid all_alive( int delta, big_grid stop ) {
   This is the first non-trivial predictor.  It uses mmap to manage its
   data representation.
 */
-const int MAX_BUCKETS = 16;
-const int BRAIN_BUCKETS   = 8;
-const int PREDICT_BUCKETS = 4;
+const int BUCKETS = 8;
 const int ENTRIES = 2;
-const int BRAIN = DELTA * BRAIN_BUCKETS * SMALLCODE * ENTRIES;
+const int BRAIN = DELTA * BUCKETS * SMALLCODE * ENTRIES;
 
 int bucket( double p ) {
-	double cutoffs[MAX_BUCKETS] = 
+	double cutoffs[BUCKETS] = 
 	{
-		0.116873,
 		0.164699,
-		0.211544,
 		0.258496,
-		0.305516,
 		0.352168,
-		0.398829,
 		0.445686,
-		0.492449,
 		0.539146,
-		0.585685,
 		0.632559,
-		0.679692,
 		0.728846,
-		0.786992,
 		1
 	};
 	int result;
 	for( result = 0;
-	     result < BRAIN_BUCKETS-1 and p > cutoffs[(result+1) * MAX_BUCKETS/BRAIN_BUCKETS - 1];
+	     result < BUCKETS-1 and p > cutoffs[result];
 	     result++ ) {
 		// empty loop
 	}
@@ -754,7 +744,7 @@ struct brain_data {
 	}
 
 	unsigned int& get( const int& delta, const int& bucket, const encoding& code, const bool entry ) {
-		int index = (((delta-1) * BRAIN_BUCKETS + bucket) * SMALLCODE + smallcode[code]) * ENTRIES + entry;
+		int index = (((delta-1) * BUCKETS + bucket) * SMALLCODE + smallcode[code]) * ENTRIES + entry;
 		return data[index];
 	}
 	unsigned int& get( const int& delta, const int& bucket, const grid<5,5>& grid, const bool entry ) {
@@ -803,17 +793,13 @@ void train_many( ) {
 
 double p_alive_from_bucket( int delta, int bucket, encoding e ) {
 	int dead, alive;
-	if( 0 <= bucket and bucket < PREDICT_BUCKETS ) {
-		dead  = 0;
-		alive = 0;
-		for( int i = 0; i < BRAIN_BUCKETS/PREDICT_BUCKETS; i++ ) {
-			dead  += brain.get( delta, BRAIN_BUCKETS/PREDICT_BUCKETS*bucket + i, e, false );
-			alive += brain.get( delta, BRAIN_BUCKETS/PREDICT_BUCKETS*bucket + i, e, true  );
-		}
+	if( 0 <= bucket and bucket < BUCKETS ) {
+		dead  = brain.get( delta, bucket, e, false );
+		alive = brain.get( delta, bucket, e, true  );
 	} else {
 		dead  = 0;
 		alive = 0;
-		for( int i = 0; i < BRAIN_BUCKETS; i++ ) {
+		for( int i = 0; i < BUCKETS; i++ ) {
 			dead  += brain.get( delta, i, e, false );
 			alive += brain.get( delta, i, e, true  );			
 		}
@@ -839,14 +825,14 @@ big_grid predict( int delta, big_grid stop ) {
 	/*
 	  Predict the bucket for p first using naive Bayes.
 	*/
-	double log_likelihood[PREDICT_BUCKETS];
-	for( int i = 0; i < PREDICT_BUCKETS; i++ )
+	double log_likelihood[BUCKETS];
+	for( int i = 0; i < BUCKETS; i++ )
 		log_likelihood[i] = 0;
 
 	for( int x = 0; x < N; x++ ) {
 	for( int y = 0; y < N; y++ ) {
 		grid<5,5> g = stop.subgrid<5,5>( x, y, 2, 2 );
-		for( int i = 0; i < PREDICT_BUCKETS; i++ ) {
+		for( int i = 0; i < BUCKETS; i++ ) {
 			int dead  = brain.get( delta, i, g, false );
 			int alive = brain.get( delta, i, g, true  );
 			int total = dead + alive;
@@ -857,24 +843,31 @@ big_grid predict( int delta, big_grid stop ) {
 
 	// Normalize a bit to keep things in a manageable range
 	double biggest = 0;
-	for( int i = 0; i < PREDICT_BUCKETS; i++ ) {
+	for( int i = 0; i < BUCKETS; i++ ) {
 		if( biggest < log_likelihood[i] )
 			biggest = log_likelihood[i];
 	}
-	for( int i = 0; i < PREDICT_BUCKETS; i++ ) {
+	for( int i = 0; i < BUCKETS; i++ ) {
 		log_likelihood[i] -= biggest;
 	}
-	double likelihood[PREDICT_BUCKETS];
-	for( int i = 0; i < PREDICT_BUCKETS; i++ ) {
+	double likelihood[BUCKETS];
+	for( int i = 0; i < BUCKETS; i++ ) {
 		likelihood[i] = exp(log_likelihood[i]);
 	}
 	double sum = 0;
-	for( int i = 0; i < PREDICT_BUCKETS; i++ ) {
+	for( int i = 0; i < BUCKETS; i++ ) {
 		sum += likelihood[i];
 	}
-	for( int i = 0; i < PREDICT_BUCKETS; i++ ) {
+	for( int i = 0; i < BUCKETS; i++ ) {
 		likelihood[i] /= sum;
 	}
+
+	for( int i = 0; i < BUCKETS; i++ ) {
+		cout << likelihood[i] << " ";
+	}
+
+	big_grid z;
+	return z;
 
 	/*
 	  Now use that information to make a better prediction for
@@ -887,7 +880,7 @@ big_grid predict( int delta, big_grid stop ) {
 		encoding e = encode<5,5>( g );
 
 		double p = 0;
-		for( int i = 0; i < PREDICT_BUCKETS; i++ ) {
+		for( int i = 0; i < BUCKETS; i++ ) {
 			p += likelihood[i] * p_alive_from_bucket( delta, i, e );
 		}
 
@@ -1010,9 +1003,15 @@ void init( ) {
 int main( ) {
 	init();
 
-	test();
-
+/*
+	while( 1 ) {
+		train_many();
+		test();
+	}
+*/
 //	submit( predict );
+
+	test_ps( 10 );
 
 	return 0;
 }
