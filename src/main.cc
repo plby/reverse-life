@@ -800,7 +800,7 @@ void train_many( ) {
 	}
 }
 
-bool predict_from_bucket( int delta, int bucket, encoding e ) {
+double p_alive_from_bucket( int delta, int bucket, encoding e ) {
 	int dead, alive;
 	if( 0 <= bucket and bucket < BUCKETS ) {
 		dead  = brain.get( delta, bucket, e, false );
@@ -817,7 +817,10 @@ bool predict_from_bucket( int delta, int bucket, encoding e ) {
 	// The following reflects a minimal 1/7 prior probability of being dead
 	dead += 5;
 
-	return alive > dead;
+	return double(alive + 1) / double(dead + alive + 2);
+}
+bool predict_from_bucket( int delta, int bucket, encoding e ) {
+	return p_alive_from_bucket( delta, bucket, e ) > 0.5;
 }
 bool predict_from_bucket( int delta, int bucket, grid<5,5> g ) {
 	return predict_from_bucket( delta, bucket, encode<5,5>(g) );
@@ -868,13 +871,6 @@ big_grid predict( int delta, big_grid stop ) {
 		likelihood[i] /= sum;
 	}
 
-	for( int i = 0; i < BUCKETS; i++ ) {
-		cout << likelihood[i] << " ";
-	}
-
-	big_grid z;
-	return z;
-
 	/*
 	  Now use that information to make a better prediction for
 	  each cell.
@@ -883,8 +879,14 @@ big_grid predict( int delta, big_grid stop ) {
 	for( int x = 0; x < N; x++ ) {
 	for( int y = 0; y < N; y++ ) {
 		grid<5,5> g = stop.subgrid<5,5>( x, y, 2, 2 );
+		encoding e = encode<5,5>( g );
 
-		result.set_uncentered( x, y, predict_from_bucket( delta, -1, g ) );
+		double p = 0;
+		for( int i = 0; i < BUCKETS; i++ ) {
+			p += likelihood[i] * p_alive_from_bucket( delta, i, e );
+		}
+
+		result.set_uncentered( x, y, p > 0.5 );
 	}
 	}
 	return result;
@@ -1003,15 +1005,9 @@ void init( ) {
 int main( ) {
 	init();
 
-/*
-	while( 1 ) {
-		train_many();
-		test();
-	}
-*/
-//	submit( predict );
+	test();
 
-	test_ps( 10 );
+//	submit( predict );
 
 	return 0;
 }
