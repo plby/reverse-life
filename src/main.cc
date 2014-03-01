@@ -823,6 +823,10 @@ bool predict_from_bucket( int delta, int bucket, grid<5,5> g ) {
 	return predict_from_bucket( delta, bucket, encode<5,5>(g) );
 }
 
+/*
+  The adjustment factor is not chosen too scientifically. :(
+*/
+const double ADJUST = 25;
 big_grid predict( int delta, big_grid stop ) {
 	/*
 	  Predict the bucket for p first using naive Bayes.
@@ -838,7 +842,7 @@ big_grid predict( int delta, big_grid stop ) {
 			int dead  = brain.get( delta, i, g, false );
 			int alive = brain.get( delta, i, g, true  );
 			int total = dead + alive;
-			log_likelihood[i] += log(1 + total);
+			log_likelihood[i] += log(1 + total) / ADJUST;
 		}
 	}
 	}	
