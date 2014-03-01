@@ -756,6 +756,10 @@ struct brain_data {
 		int index = (((delta-1) * BUCKETS + bucket) * SMALLCODE + smallcode[code]) * ENTRIES + entry;
 		return data[index];
 	}
+	unsigned int& get( const int& delta, const int& bucket, const grid<5,5>& grid, const bool entry ) {
+		encoding code = encode<5,5>( grid );
+		return get( delta, bucket, code, entry );
+	}
 	void add( const int& delta, const int& bucket, const encoding& code, const bool entry ) {
 		unsigned int& g = get( delta, bucket, code, entry );
 		if( g > UINT_MAX - 10 ) {
@@ -796,9 +800,27 @@ void train_many( ) {
 	}
 }
 
-int lookup( int delta, int bucket, grid<5,5> g, bool entry ) {
-	encoding e = encode<5,5>( g );
-	return brain.get( delta, bucket, e, entry );
+bool predict_from_bucket( int delta, int bucket, encoding e ) {
+	int dead, alive;
+	if( 0 <= bucket and bucket < BUCKETS ) {
+		dead  = brain.get( delta, bucket, e, false );
+		alive = brain.get( delta, bucket, e, true  );	
+	} else {
+		dead  = 0;
+		alive = 0;
+		for( int i = 0; i < BUCKETS; i++ ) {
+			dead  += brain.get( delta, i, e, false );
+			alive += brain.get( delta, i, e, true  );			
+		}
+	}
+
+	// The following reflects a minimal 1/7 prior probability of being dead
+	dead += 5;
+
+	return alive > dead;
+}
+bool predict_from_bucket( int delta, int bucket, grid<5,5> g ) {
+	return predict_from_bucket( delta, bucket, encode<5,5>(g) );
 }
 
 big_grid predict( int delta, big_grid stop ) {
@@ -813,8 +835,8 @@ big_grid predict( int delta, big_grid stop ) {
 	// for( int y = 0; y < N; y++ ) {
 	// 	grid<5,5> g = stop.subgrid<5,5>( x, y, 2, 2 );
 	// 	for( int i = 0; i < BUCKETS; i++ ) {
-	// 		int dead  = lookup( delta, i, g, false );
-	// 		int alive = lookup( delta, i, g, true  );
+	// 		int dead  = brain.get( delta, i, g, false );
+	// 		int alive = brain.get( delta, i, g, true  );
 	// 		int total = dead + alive;
 	// 		log_likelihood[i] += log(1 + total);
 	// 	}
@@ -858,15 +880,7 @@ big_grid predict( int delta, big_grid stop ) {
 	for( int y = 0; y < N; y++ ) {
 		grid<5,5> g = stop.subgrid<5,5>( x, y, 2, 2 );
 
-		int dead  = lookup( delta, 0, g, false );
-		int alive = lookup( delta, 0, g, true  );
-
-		// The following reflects a minimal 1/7 prior probability of being dead
-		dead += 5;
-
-		if( alive > dead ) {
-			result.set_uncentered( x, y, true );
-		}
+		result.set_uncentered( x, y, predict_from_bucket( delta, -1, g ) );
 	}
 	}
 	return result;
@@ -977,6 +991,43 @@ void test_ps( int count ) {
 	}
 }
 
+void explore_buckets( ) {
+	unsigned int total  = 0;
+	unsigned int battle = 0;
+
+	unsigned long long int total_weighted  = 0;
+	unsigned long long int battle_weighted = 0;
+
+	for( encoding e = 0; (int)e < SMALLCODE; e++ ) {
+		for( int delta = 1; delta <=5; delta++ ) {
+			total++;
+
+			int guess[2] = {0, 0};
+			int here = 0;
+			for( int bucket = 0; bucket < BUCKETS; bucket++ ) {
+				here +=   brain.get( delta, bucket, e, false )
+					+ brain.get( delta, bucket, e, true  );
+
+				int what = predict_from_bucket( delta, bucket, e );
+				guess[what] += here;
+			}
+			total_weighted += here;
+			int minimum = min( guess[0], guess[1] );
+			if( minimum > 0 ) {
+				battle++;
+				battle_weighted += here;
+			}
+		}
+	}
+
+	cout << "  RAW\n";
+	cout << "total\t"  << total  << "\n";
+	cout << "battle\t" << battle << "\n";
+	cout << "  WEIGHTED\n";
+	cout << "total\t"  << total_weighted  << "\n";
+	cout << "battle\t" << battle_weighted << "\n";
+}
+
 void init( ) {
 	init_life();
 	init_code();
@@ -985,10 +1036,14 @@ void init( ) {
 int main( ) {
 	init();
 
+	explore_buckets();
+
+/*
 	while( 1 ) {
 		train_many();
-//		test();
+		test();
 	}
+*/
 //	submit( predict );
 
 //	test_ps( 10 );
