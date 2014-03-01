@@ -737,7 +737,7 @@ struct brain_data {
 		}
 
 		// dummy read
-		int entries = 0;
+		long long int entries = 0;
 		for( int i = 0; i < BRAIN; i++ ) {
 			entries += data[i];
 		}
