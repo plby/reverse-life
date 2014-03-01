@@ -2,6 +2,7 @@
 #include <bitset>
 #include <vector>
 #include <cassert>
+#include <climits>
 #include <cstdint>
 #include <iomanip>
 #include <fstream>
@@ -22,10 +23,10 @@ const int M = N * N;
 
 const int SUBMIT = 50000;
 const int TEST   = 50000;
-const int TRAIN  = 50000;
+const int TRAIN  = 5000;
 
 const int TEST_REPORT  = 0;
-const int TRAIN_REPORT = 0;
+const int TRAIN_REPORT = 10000;
 
 /*
   We precompute a lookup table for the game of life function for
@@ -660,7 +661,7 @@ big_grid all_alive( int delta, big_grid stop ) {
   This is the first non-trivial predictor.  It uses mmap to manage its
   data representation.
 */
-const int BUCKETS = 1;
+const int BUCKETS = 8;
 const int ENTRIES = 2;
 const int BRAIN = DELTA * BUCKETS * SMALLCODE * ENTRIES;
 
@@ -695,7 +696,7 @@ int bucket( double p ) {
 }
 
 struct brain_data {
-	int *data;
+	unsigned int *data;
 
 	brain_data( ) {
 		int fd;
@@ -710,7 +711,7 @@ struct brain_data {
 			exit( 2 );
 		}
 
-		int want_len = BRAIN * sizeof(int);
+		int want_len = BRAIN * sizeof(unsigned int);
 		int have_len = st.st_size;
 		if( have_len != want_len ) {
 			if( have_len > 0 ) {
@@ -724,9 +725,9 @@ struct brain_data {
 			}
 		}
 
-		data = (int *)mmap( 0, want_len,
-				    PROT_READ | PROT_WRITE,
-				    MAP_FILE  | MAP_SHARED, fd, 0 );
+		data = (unsigned int *)mmap( 0, want_len,
+					     PROT_READ | PROT_WRITE,
+					     MAP_FILE  | MAP_SHARED, fd, 0 );
 		if( data == MAP_FAILED ) {
 			cerr << "Couldn't mmap data/brain file.\n";
 			exit( 4 );
@@ -745,15 +746,23 @@ struct brain_data {
 	}
 
 	~brain_data( ) {
-		if( munmap(data, BRAIN * sizeof(int)) == -1 ) {
+		if( munmap(data, BRAIN * sizeof(unsigned int)) == -1 ) {
 			cerr << "Error in munmap of data/brain.\n";
 			exit( 7 );
 		}
 	}
 
-	int& get( const int& delta, const int& bucket, const encoding& code, const bool entry ) {
+	unsigned int& get( const int& delta, const int& bucket, const encoding& code, const bool entry ) {
 		int index = (((delta-1) * BUCKETS + bucket) * SMALLCODE + smallcode[code]) * ENTRIES + entry;
 		return data[index];
+	}
+	void add( const int& delta, const int& bucket, const encoding& code, const bool entry ) {
+		unsigned int& g = get( delta, bucket, code, entry );
+		if( g > UINT_MAX - 10 ) {
+			cerr << "Brain entry is too big.\n";
+			exit( 1 );
+		}
+		g++;
 	}
 } brain;
 
@@ -773,7 +782,7 @@ void train_once( training_data d ) {
 			grid<5,5> g = d.gs[BURN+delta].subgrid<5,5>( x, y, 2, 2 );
 			encoding e = encode<5,5>( g );
 
-			brain.get( delta, bucket(d.p), e, truth )++;
+			brain.add( delta, bucket(d.p), e, truth );
 		}
 	}
 	}
@@ -793,52 +802,52 @@ int lookup( int delta, int bucket, grid<5,5> g, bool entry ) {
 }
 
 big_grid predict( int delta, big_grid stop ) {
-	// /*
-	//   Predict the bucket for p first using naive Bayes.
-	// */
-	// double log_likelihood[BUCKETS];
-	// for( int i = 0; i < BUCKETS; i++ )
-	// 	log_likelihood[i] = 0;
+	/*
+	  Predict the bucket for p first using naive Bayes.
+	*/
+	double log_likelihood[BUCKETS];
+	for( int i = 0; i < BUCKETS; i++ )
+		log_likelihood[i] = 0;
 
-	// for( int x = 0; x < N; x++ ) {
-	// for( int y = 0; y < N; y++ ) {
-	// 	grid<5,5> g = stop.subgrid<5,5>( x, y, 2, 2 );
-	// 	for( int i = 0; i < BUCKETS; i++ ) {
-	// 		int dead  = lookup( delta, i, g, false );
-	// 		int alive = lookup( delta, i, g, true  );
-	// 		int total = dead + alive;
-	// 		log_likelihood[i] += log(1 + total);
-	// 	}
-	// }
-	// }	
+	for( int x = 0; x < N; x++ ) {
+	for( int y = 0; y < N; y++ ) {
+		grid<5,5> g = stop.subgrid<5,5>( x, y, 2, 2 );
+		for( int i = 0; i < BUCKETS; i++ ) {
+			int dead  = lookup( delta, i, g, false );
+			int alive = lookup( delta, i, g, true  );
+			int total = dead + alive;
+			log_likelihood[i] += log(1 + total);
+		}
+	}
+	}	
 
-	// // Normalize a bit to keep things in a manageable range
-	// double biggest = 0;
-	// for( int i = 0; i < BUCKETS; i++ ) {
-	// 	if( biggest < log_likelihood[i] )
-	// 		biggest = log_likelihood[i];
-	// }
-	// for( int i = 0; i < BUCKETS; i++ ) {
-	// 	log_likelihood[i] -= biggest;
-	// }
-	// double likelihood[BUCKETS];
-	// for( int i = 0; i < BUCKETS; i++ ) {
-	// 	likelihood[i] = exp(log_likelihood[i]);
-	// }
-	// double sum = 0;
-	// for( int i = 0; i < BUCKETS; i++ ) {
-	// 	sum += likelihood[i];
-	// }
-	// for( int i = 0; i < BUCKETS; i++ ) {
-	// 	likelihood[i] /= sum;
-	// }
+	// Normalize a bit to keep things in a manageable range
+	double biggest = 0;
+	for( int i = 0; i < BUCKETS; i++ ) {
+		if( biggest < log_likelihood[i] )
+			biggest = log_likelihood[i];
+	}
+	for( int i = 0; i < BUCKETS; i++ ) {
+		log_likelihood[i] -= biggest;
+	}
+	double likelihood[BUCKETS];
+	for( int i = 0; i < BUCKETS; i++ ) {
+		likelihood[i] = exp(log_likelihood[i]);
+	}
+	double sum = 0;
+	for( int i = 0; i < BUCKETS; i++ ) {
+		sum += likelihood[i];
+	}
+	for( int i = 0; i < BUCKETS; i++ ) {
+		likelihood[i] /= sum;
+	}
 
-	// for( int i = 0; i < BUCKETS; i++ ) {
-	// 	cout << likelihood[i] << " ";
-	// }
+	for( int i = 0; i < BUCKETS; i++ ) {
+		cout << likelihood[i] << " ";
+	}
 
-	// big_grid z;
-	// return z;
+	big_grid z;
+	return z;
 
 	/*
 	  Now use that information to make a better prediction for
@@ -978,7 +987,7 @@ int main( ) {
 
 	while( 1 ) {
 		train_many();
-		test();
+//		test();
 	}
 //	submit( predict );
 
