@@ -975,26 +975,6 @@ void submit( predictor p ) {
 	}
 }
 
-void test_ps( int count ) {
-	for( int i = 0; i < count; i++ ) {
-		double p;
-		int delta;
-		big_grid start;
-		big_grid stop;
-		do {
-			training_data d;
-			p = d.p;
-			delta = uniform_smallint( 1, 5+1 ); // remember that the right end-point is excluded
-			start = d.gs[BURN];
-			stop  = d.gs[BURN+delta];
-		} while( stop.g.count() == 0 );
-
-		// See if we can determine p !
-		predict( delta, stop );
-		cout << bucket(p) << "\n";
-	}
-}
-
 void init( ) {
 	init_life();
 	init_code();
@@ -1003,15 +983,9 @@ void init( ) {
 int main( ) {
 	init();
 
-/*
-	while( 1 ) {
-		train_many();
-		test();
-	}
-*/
-//	submit( predict );
+	test();
 
-	test_ps( 10 );
+//	submit( predict );
 
 	return 0;
 }
