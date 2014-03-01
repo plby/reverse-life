@@ -862,13 +862,6 @@ big_grid predict( int delta, big_grid stop ) {
 		likelihood[i] /= sum;
 	}
 
-	for( int i = 0; i < BUCKETS; i++ ) {
-		cout << likelihood[i] << " ";
-	}
-
-	big_grid z;
-	return z;
-
 	/*
 	  Now use that information to make a better prediction for
 	  each cell.
