@@ -23,9 +23,9 @@ const int M = N * N;
 
 const int SUBMIT = 50000;
 const int TEST   = 50000;
-const int TRAIN  = 5000;
+const int TRAIN  = 50000;
 
-const int TEST_REPORT  = 0;
+const int TEST_REPORT  = 10000;
 const int TRAIN_REPORT = 10000;
 
 /*
@@ -790,7 +790,7 @@ void train_once( training_data d ) {
 void train_many( ) {
 	for( int i = 0; i < TRAIN; i++ ) {
 		if( TRAIN_REPORT > 0 and (i % TRAIN_REPORT) == 0 )
-			cout << i << "\n";
+			cout << i << " training grids generated.\n";
 		training_data d;
 		train_once( d );
 	}
@@ -802,52 +802,52 @@ int lookup( int delta, int bucket, grid<5,5> g, bool entry ) {
 }
 
 big_grid predict( int delta, big_grid stop ) {
-	/*
-	  Predict the bucket for p first using naive Bayes.
-	*/
-	double log_likelihood[BUCKETS];
-	for( int i = 0; i < BUCKETS; i++ )
-		log_likelihood[i] = 0;
+	// /*
+	//   Predict the bucket for p first using naive Bayes.
+	// */
+	// double log_likelihood[BUCKETS];
+	// for( int i = 0; i < BUCKETS; i++ )
+	// 	log_likelihood[i] = 0;
 
-	for( int x = 0; x < N; x++ ) {
-	for( int y = 0; y < N; y++ ) {
-		grid<5,5> g = stop.subgrid<5,5>( x, y, 2, 2 );
-		for( int i = 0; i < BUCKETS; i++ ) {
-			int dead  = lookup( delta, i, g, false );
-			int alive = lookup( delta, i, g, true  );
-			int total = dead + alive;
-			log_likelihood[i] += log(1 + total);
-		}
-	}
-	}	
+	// for( int x = 0; x < N; x++ ) {
+	// for( int y = 0; y < N; y++ ) {
+	// 	grid<5,5> g = stop.subgrid<5,5>( x, y, 2, 2 );
+	// 	for( int i = 0; i < BUCKETS; i++ ) {
+	// 		int dead  = lookup( delta, i, g, false );
+	// 		int alive = lookup( delta, i, g, true  );
+	// 		int total = dead + alive;
+	// 		log_likelihood[i] += log(1 + total);
+	// 	}
+	// }
+	// }	
 
-	// Normalize a bit to keep things in a manageable range
-	double biggest = 0;
-	for( int i = 0; i < BUCKETS; i++ ) {
-		if( biggest < log_likelihood[i] )
-			biggest = log_likelihood[i];
-	}
-	for( int i = 0; i < BUCKETS; i++ ) {
-		log_likelihood[i] -= biggest;
-	}
-	double likelihood[BUCKETS];
-	for( int i = 0; i < BUCKETS; i++ ) {
-		likelihood[i] = exp(log_likelihood[i]);
-	}
-	double sum = 0;
-	for( int i = 0; i < BUCKETS; i++ ) {
-		sum += likelihood[i];
-	}
-	for( int i = 0; i < BUCKETS; i++ ) {
-		likelihood[i] /= sum;
-	}
+	// // Normalize a bit to keep things in a manageable range
+	// double biggest = 0;
+	// for( int i = 0; i < BUCKETS; i++ ) {
+	// 	if( biggest < log_likelihood[i] )
+	// 		biggest = log_likelihood[i];
+	// }
+	// for( int i = 0; i < BUCKETS; i++ ) {
+	// 	log_likelihood[i] -= biggest;
+	// }
+	// double likelihood[BUCKETS];
+	// for( int i = 0; i < BUCKETS; i++ ) {
+	// 	likelihood[i] = exp(log_likelihood[i]);
+	// }
+	// double sum = 0;
+	// for( int i = 0; i < BUCKETS; i++ ) {
+	// 	sum += likelihood[i];
+	// }
+	// for( int i = 0; i < BUCKETS; i++ ) {
+	// 	likelihood[i] /= sum;
+	// }
 
-	for( int i = 0; i < BUCKETS; i++ ) {
-		cout << likelihood[i] << " ";
-	}
+	// for( int i = 0; i < BUCKETS; i++ ) {
+	// 	cout << likelihood[i] << " ";
+	// }
 
-	big_grid z;
-	return z;
+	// big_grid z;
+	// return z;
 
 	/*
 	  Now use that information to make a better prediction for
