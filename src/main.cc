@@ -738,7 +738,7 @@ struct brain_data {
 		}
 
 		// dummy read
-		long long int entries = 0;
+		unsigned long long int entries = 0;
 		for( int i = 0; i < BRAIN; i++ ) {
 			entries += data[i];
 		}
@@ -790,7 +790,7 @@ void train_once( training_data d ) {
 void train_many( ) {
 	for( int i = 0; i < TRAIN; i++ ) {
 		if( TRAIN_REPORT > 0 and (i % TRAIN_REPORT) == 0 )
-			cout << i << " training grids generated.\n";
+			cout << i << " training grids generated." << endl;
 		training_data d;
 		train_once( d );
 	}
