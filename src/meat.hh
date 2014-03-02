@@ -39,19 +39,19 @@ int bucket( double p ) {
 struct brain_data {
 	unsigned int *data;
 
-	brain_data( ) {
+	brain_data( string file ) {
 		if( DISABLE_BRAIN )
 			return;
 
 		int fd;
-		if( (fd = open("data/brain", O_RDWR | O_CREAT, S_IRUSR | S_IWUSR)) < 0 ) {
-			cerr << "Couldn't open data/brain file.\n";
+		if( (fd = open(file.c_str(), O_RDWR | O_CREAT, S_IRUSR | S_IWUSR)) < 0 ) {
+			cerr << "Couldn't open " << file << " file.\n";
 			exit( 1 );
 		}
 
 		struct stat st;
 		if( fstat(fd, &st) < 0 ) {
-			cerr << "Couldn't stat data/brain file.\n";
+			cerr << "Couldn't stat " << file << " file.\n";
 			exit( 2 );
 		}
 
@@ -59,12 +59,12 @@ struct brain_data {
 		int have_len = st.st_size;
 		if( have_len != want_len ) {
 			if( have_len > 0 ) {
-				cerr << "File data/brain is neither the expected size nor empty.\n";
+				cerr << "File " << file << " is neither the expected size nor empty.\n";
 				cerr << "Expected " << want_len << "  actual " << have_len << "  (bytes)\n";
 				exit( 10 );
 			}
 			if( ftruncate(fd, want_len) != 0 ) {
-				cerr << "Couldn't set data/brain file size.\n";
+				cerr << "Couldn't set " << file << " file size.\n";
 				exit( 3 );
 			}
 		}
@@ -73,11 +73,11 @@ struct brain_data {
 					     PROT_READ | PROT_WRITE,
 					     MAP_FILE  | MAP_SHARED, fd, 0 );
 		if( data == MAP_FAILED ) {
-			cerr << "Couldn't mmap data/brain file.\n";
+			cerr << "Couldn't mmap " << file << " file.\n";
 			exit( 4 );
 		}
 		if( close(fd) != 0 ) {
-			cerr << "Couldn't close data/brain file.\n";
+			cerr << "Couldn't close " << file << " file.\n";
 			exit( 5 );
 		}
 
@@ -93,7 +93,7 @@ struct brain_data {
 		if( DISABLE_BRAIN )
 			return;
 		if( munmap(data, BRAIN * sizeof(unsigned int)) == -1 ) {
-			cerr << "Error in munmap of data/brain.\n";
+			cerr << "Error in munmap of a brain.\n";
 			exit( 7 );
 		}
 	}
@@ -114,7 +114,7 @@ struct brain_data {
 		}
 		g++;
 	}
-} brain;
+} brain( "data/brain" );
 
 void train_once( training_data<N,N> d ) {
 	// Find maximum delta without dead grid
@@ -173,6 +173,38 @@ bool predict_from_bucket( int delta, int bucket, grid<K,K> g ) {
 	return predict_from_bucket( delta, bucket, encode<K,K>(g) );
 }
 
+const double TOLERANCE = 0.1;
+bool predict_with_likelihood( int delta, big_grid stop, int x, int y,
+			      double likelihood[BUCKETS], bool no_recurse );
+double hack( int delta, big_grid stop, int x, int y, double likelihood[BUCKETS] ) {
+	int t = 0;
+	for( int dx = -1; dx <= 1; dx++ ) {
+	for( int dy = -1; dy <= 1; dy++ ) {
+		t *= 2;
+		t += stop.represented_uncentered( x+dx, y+dy ) and
+			predict_with_likelihood( delta+1, stop, x, y, likelihood, true );
+	}
+	}
+	return life_step[t];
+}
+
+bool predict_with_likelihood( int delta, big_grid stop, int x, int y,
+			      double likelihood[BUCKETS], bool no_recurse = false ) {
+	grid<K,K> g = stop.subgrid<K,K>( x, y, 2, 2 );
+	encoding e = encode<K,K>( g );
+
+	double p = 0;
+	for( int i = 0; i < BUCKETS; i++ ) {
+		p += likelihood[i] * p_alive_from_bucket( delta, i, e );
+	}
+
+	if( (not no_recurse) and abs(p-0.5) < TOLERANCE and delta < 5 ) {
+		return hack( delta, stop, x, y, likelihood );
+	}
+
+	return p > 0.5;
+}
+
 big_grid predict( int delta, big_grid stop ) {
 	/*
 	  Predict the bucket for p first using naive Bayes.
@@ -221,15 +253,10 @@ big_grid predict( int delta, big_grid stop ) {
 	big_grid result;
 	for( int x = 0; x < N; x++ ) {
 	for( int y = 0; y < N; y++ ) {
-		grid<K,K> g = stop.subgrid<K,K>( x, y, 2, 2 );
-		encoding e = encode<K,K>( g );
-
-		double p = 0;
-		for( int i = 0; i < BUCKETS; i++ ) {
-			p += likelihood[i] * p_alive_from_bucket( delta, i, e );
-		}
-
-		result.set_uncentered( x, y, p > 0.5 );
+		result.set_uncentered(
+			x, y,
+			predict_with_likelihood( delta, stop, x, y, likelihood )
+			);
 	}
 	}
 	return result;
