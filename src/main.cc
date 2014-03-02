@@ -19,7 +19,7 @@ using namespace std;
 #include <unistd.h>
 
 // My headers
-const bool DISABLE_BRAIN = true;
+const bool DISABLE_BRAIN = false;
 
 #include "grid.hh"
 #include "life.hh"
@@ -39,9 +39,10 @@ void init( ) {
 int main( ) {
 	init();
 
+	train_many();
 	test();
 
-	submit( predict );
+//	submit( predict );
 
 	return 0;
 }

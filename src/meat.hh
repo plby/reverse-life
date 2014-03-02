@@ -114,7 +114,10 @@ struct brain_data {
 		}
 		g++;
 	}
-} brain( "data/brain" );
+};
+
+brain_data brain    ( "data/brain"     );
+brain_data neighbors( "data/neighbors" );
 
 void train_once( training_data<N,N> d ) {
 	// Find maximum delta without dead grid
@@ -129,11 +132,20 @@ void train_once( training_data<N,N> d ) {
 		bool truth = d.gs[BURN].get_bool_uncentered( x, y );
 
 		for( int delta = 1; delta < alive; delta++ ) {
-		        big_grid h = d.gs[BURN+delta]; 
-			grid<K,K> g = h.subgrid<K,K>( x, y, 2, 2 );
-			encoding e = encode<K,K>( g );
+			{
+				big_grid h = d.gs[BURN+delta];
+				grid<K,K> g = h.subgrid<K,K>( x, y, 2, 2 );
+				encoding e = encode<K,K>( g );
 
-			brain.add( delta, bucket(d.p), e, truth );
+				brain.add( delta, bucket(d.p), e, truth );
+			}
+			{
+				big_grid h = d.gs[BURN+delta];
+				grid<K,K> g = h.subgrid<K,K>( x+1, y, 2, 2 );
+				encoding e = encode<K,K>( g );
+
+				neighbors.add( delta, bucket(d.p), e, truth );
+			}
 		}
 	}
 	}
@@ -147,40 +159,54 @@ void train_many( int TRAIN = 50000, int TRAIN_REPORT = 10000 ) {
 	}
 }
 
-double p_alive_from_bucket( int delta, int bucket, encoding e ) {
+double p_alive_from_bucket( int delta, int bucket, encoding e, encoding f ) {
 	int dead, alive;
 	if( 0 <= bucket and bucket < BUCKETS ) {
 		dead  = brain.get( delta, bucket, e, false );
 		alive = brain.get( delta, bucket, e, true  );
+
+		dead  = neighbors.get( delta, bucket, f, false );
+		alive = neighbors.get( delta, bucket, f, true  );
 	} else {
 		dead  = 0;
 		alive = 0;
 		for( int i = 0; i < BUCKETS; i++ ) {
 			dead  += brain.get( delta, i, e, false );
 			alive += brain.get( delta, i, e, true  );			
+
+			dead  += neighbors.get( delta, i, f, false );
+			alive += neighbors.get( delta, i, f, true  );			
 		}
 	}
 
-	// The following reflects a minimal 1/7 prior probability of being dead
-	dead += 5;
+	// The following reflects some prior probability of being dead
+	dead += PRIOR;
 
 	return double(alive + 1) / double(dead + alive + 2);
 }
-bool predict_from_bucket( int delta, int bucket, encoding e ) {
-	return p_alive_from_bucket( delta, bucket, e ) > 0.5;
+bool predict_from_bucket( int delta, int bucket, encoding e, encoding f ) {
+	return p_alive_from_bucket( delta, bucket, e, f ) > 0.5;
 }
-bool predict_from_bucket( int delta, int bucket, grid<K,K> g ) {
-	return predict_from_bucket( delta, bucket, encode<K,K>(g) );
+bool predict_from_bucket( int delta, int bucket, grid<K,K> g, grid<K,K> h ) {
+	return predict_from_bucket( delta, bucket, encode<K,K>(g), encode<K,K>(h) );
 }
 
 bool predict_with_likelihood( int delta, big_grid stop, int x, int y,
 			      double likelihood[BUCKETS], bool no_recurse = false ) {
-	grid<K,K> g = stop.subgrid<K,K>( x, y, 2, 2 );
-	encoding e = encode<K,K>( g );
+	encoding e;
+	{
+		grid<K,K> g = stop.subgrid<K,K>( x, y, 2, 2 );
+		e = encode<K,K>( g );
+	}
+	encoding f;
+	{
+		grid<K,K> h = stop.subgrid<K,K>( x, y, 2, 2 );
+		f = encode<K,K>( h );
+	}
 
 	double p = 0;
 	for( int i = 0; i < BUCKETS; i++ ) {
-		p += likelihood[i] * p_alive_from_bucket( delta, i, e );
+		p += likelihood[i] * p_alive_from_bucket( delta, i, e, f );
 	}
 
 	return p > 0.5;

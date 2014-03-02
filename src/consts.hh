@@ -12,4 +12,6 @@ const int DELTA = 5; // maximum value of delta
 */
 const double ADJUST = K*K;
 
+const int PRIOR = 3;
+
 #endif
