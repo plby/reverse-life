@@ -144,11 +144,11 @@ struct life_solver {
 };
 
 void sat( ) {
-	grid<4,4> g = decode<4,4>( uniform_smallint( 1 << 16 ) );
-	grid<4,4> h = evolve_once( g );
+	grid<4,4> g, h, i;
+	g = decode<4,4>( uniform_smallint( 1 << 16 ) );
+	h = evolve_once<4,4>( g );
 	life_solver<4,4> ls( h, 1, 1 );
 	ls.solve();
-	grid<4,4> i;
 	ls.extract_grid( i );
 	cout << "Starting grid:" << g << "\nOne step forward:\n" << h << "\nOne step back:\n" << i << "\n";
 }
