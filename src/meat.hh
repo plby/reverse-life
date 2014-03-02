@@ -176,7 +176,7 @@ bool predict_from_bucket( int delta, int bucket, grid<K,K> g ) {
 const double TOLERANCE = 0.1;
 bool predict_with_likelihood( int delta, big_grid stop, int x, int y,
 			      double likelihood[BUCKETS], bool no_recurse );
-double hack( int delta, big_grid stop, int x, int y, double likelihood[BUCKETS] ) {
+bool hack( int delta, big_grid stop, int x, int y, double likelihood[BUCKETS] ) {
 	int t = 0;
 	for( int dx = -1; dx <= 1; dx++ ) {
 	for( int dy = -1; dy <= 1; dy++ ) {
