@@ -30,7 +30,6 @@ const bool DISABLE_BRAIN = true;
 #include "predictors.hh"
 #include "meat.hh"
 #include "actions.hh"
-#include "sat.hh"
 
 void init( ) {
 	init_life();
@@ -40,11 +39,9 @@ void init( ) {
 int main( ) {
 	init();
 
-	sat();
+	test();
 
-//	test();
-
-//	submit( predict );
+	submit( predict );
 
 	return 0;
 }
