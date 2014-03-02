@@ -80,11 +80,11 @@ struct life_solver {
 				vector<Lit> prev;
 				for( int dx = -1; dx <= +1; dx++ ) {
 				for( int dy = -1; dy <= +1; dy++ ) {
-					Lit temp = get_literal( depth, x+dx, y+dy );
+					Lit temp = get_literal( depth+1, x+dx, y+dy );
 					prev.push_back( temp );
 				}
 				}
-				Lit next = get_literal( depth+1, x, y );
+				Lit next = get_literal( depth, x, y );
 				include_clauses(S, prev, next);
 			}
 			}
@@ -104,10 +104,10 @@ struct life_solver {
 	}
 
 	void solve( ) {
-		if( not S.simplify() ) {
-			cerr << "Did not expect unsatisfiable problem.\n";
-			exit( 50 );
-		}
+		// if( not S.simplify() ) {
+		// 	cerr << "Did not expect unsatisfiable problem.\n";
+		// 	exit( 50 );
+		// }
 
 		vec<Lit> dummy;
 		bool satisfiable = S.solve(dummy);
@@ -116,18 +116,20 @@ struct life_solver {
 			exit( 60 );
 		}
 
-		bool indeterminate = false;
+//		bool indeterminate = false;
 		vector<bool> solution;
 		for( int i = 0; i < S.nVars(); i++ ) {
 			lbool l = S.modelValue( mkLit(i) );
 			if( l == l_True ) {
+				cout << i << " is true.\n";
 				solution.push_back( true  );
-				cout << "FOO.\n";
 			} else if( l == l_False ) {
+				cout << i << " is false.\n";
 				solution.push_back( false );
 			} else {
+				cout << i << " is indeterminate.\n";
 				solution.push_back( false );
-				indeterminate = true;
+//				indeterminate = true;
 			}
 		}
 		solutions.push_back(solution);
@@ -143,13 +145,15 @@ struct life_solver {
 };
 
 void sat( ) {
-	grid<4,4> g, h, i;
-	g = decode<4,4>( uniform_smallint( 1 << 16 ) );
-	h = evolve_once<4,4>( g );
-	life_solver<4,4> ls( h, 1, 1 );
-	ls.solve();
-	ls.extract_grid( i );
-	cout << "Starting grid:\n" << g << "\nOne step forward:\n" << h << "\nOne step back:\n" << i << "\n";
+	while( 1 ) {
+		grid<4,4> g, h, i;
+		g = decode<4,4>( uniform_smallint(1 << 16) );
+		h = evolve_once<4,4>( g );
+		life_solver<4,4> ls( h, 1, 1 );
+		ls.solve();
+		ls.extract_grid( i );
+		cout << g << h << i << "\n";
+	}
 }
 
 #endif
