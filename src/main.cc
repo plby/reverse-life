@@ -19,6 +19,8 @@ using namespace std;
 #include <unistd.h>
 
 // My headers
+const bool DISABLE_BRAIN = true;
+
 #include "grid.hh"
 #include "life.hh"
 #include "code.hh"
@@ -29,8 +31,6 @@ using namespace std;
 #include "meat.hh"
 #include "actions.hh"
 #include "sat.hh"
-
-const bool DISABLE_BRAIN = true;
 
 void init( ) {
 	init_life();
