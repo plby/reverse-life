@@ -57,7 +57,7 @@ struct life_solver {
 		S.newVar();
 		TRUE = get_literal( DEPTH+1, 0, 0 );
 		S.addClause( TRUE );
-		assert( S.nVars() == DEPTH * X * Y + 1 );
+		assert( S.nVars() == (DEPTH+1) * X * Y + 1 );
 
 		// Start record-keeping about possible variables
 //		possible = vector<int>( DEPTH * X * Y + 1, 0 );
