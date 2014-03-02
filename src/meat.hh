@@ -13,7 +13,8 @@ This is where the real meat of the predictor is.
 */
 const int BUCKETS = 8;
 const int ENTRIES = 2;
-const int BRAIN = DELTA * BUCKETS * SMALLCODE * ENTRIES;
+const int BUCKET_BRAIN = DELTA * BUCKETS * SMALLCODE * ENTRIES;
+const int LAME_BRAIN   = DELTA * 1       * BIGCODE   * ENTRIES;
 
 int bucket( double p ) {
 	double cutoffs[BUCKETS] = 
@@ -37,11 +38,19 @@ int bucket( double p ) {
 }
 
 struct brain_data {
+	bool buckets;
 	unsigned int *data;
 
-	brain_data( string file ) {
+	brain_data( string file, bool buckets ) : buckets(buckets) {
 		if( DISABLE_BRAIN )
 			return;
+
+		int BRAIN;
+		if( buckets ) {
+			BRAIN = BUCKET_BRAIN;
+		} else {
+			BRAIN = LAME_BRAIN;
+		}
 
 		int fd;
 		if( (fd = open(file.c_str(), O_RDWR | O_CREAT, S_IRUSR | S_IWUSR)) < 0 ) {
@@ -89,17 +98,13 @@ struct brain_data {
 		cerr << entries << " entries currently in the brain.\n";
 	}
 
-	~brain_data( ) {
-		if( DISABLE_BRAIN )
-			return;
-		if( munmap(data, BRAIN * sizeof(unsigned int)) == -1 ) {
-			cerr << "Error in munmap of a brain.\n";
-			exit( 7 );
-		}
-	}
-
 	unsigned int& get( const int& delta, const int& bucket, const encoding& code, const bool entry ) {
-		int index = (((delta-1) * BUCKETS + bucket) * SMALLCODE + smallcode[code]) * ENTRIES + entry;
+		int index;
+		if( buckets ) {
+			index = (((delta-1) * BUCKETS + bucket) * SMALLCODE + smallcode[code]) * ENTRIES + entry;
+		} else {
+			index = (((delta-1) * 1 + 0) * BIGCODE + code) * ENTRIES + entry;
+		}
 		return data[index];
 	}
 	unsigned int& get( const int& delta, const int& bucket, const grid<K,K>& grid, const bool entry ) {
@@ -116,8 +121,8 @@ struct brain_data {
 	}
 };
 
-brain_data brain    ( "data/brain"     );
-brain_data neighbors( "data/neighbors" );
+brain_data brain    ( "data/brain"    , true  );
+brain_data neighbors( "data/neighbors", false );
 
 void train_once( training_data<N,N> d ) {
 	// Find maximum delta without dead grid
@@ -159,23 +164,37 @@ void train_many( int TRAIN = 50000, int TRAIN_REPORT = 10000 ) {
 	}
 }
 
-double p_alive_from_bucket( int delta, int bucket, encoding e, encoding f ) {
-	int dead, alive;
+double p_alive_from_bucket( int delta, int bucket, encoding e,
+			    encoding f1, encoding f2, encoding f3, encoding f4 ) {
+	int dead  = 0;
+	int alive = 0;
 	if( 0 <= bucket and bucket < BUCKETS ) {
-		dead  = brain.get( delta, bucket, e, false );
-		alive = brain.get( delta, bucket, e, true  );
+		dead  += neighbors.get( delta, 0, f1, false );
+		alive += neighbors.get( delta, 0, f1, true  );
+		dead  += neighbors.get( delta, 0, f2, false );
+		alive += neighbors.get( delta, 0, f2, true  );
+		dead  += neighbors.get( delta, 0, f3, false );
+		alive += neighbors.get( delta, 0, f3, true  );
+		dead  += neighbors.get( delta, 0, f4, false );
+		alive += neighbors.get( delta, 0, f4, true  );
 
-		dead  = neighbors.get( delta, bucket, f, false );
-		alive = neighbors.get( delta, bucket, f, true  );
+		dead  /= 8;
+		alive /= 8;
+		dead  += brain.get( delta, bucket, e, false );
+		alive += brain.get( delta, bucket, e, true  );
 	} else {
-		dead  = 0;
-		alive = 0;
+		dead  += neighbors.get( delta, 0, f1, false );
+		alive += neighbors.get( delta, 0, f1, true  );			
+		dead  += neighbors.get( delta, 0, f2, false );
+		alive += neighbors.get( delta, 0, f2, true  );			
+		dead  += neighbors.get( delta, 0, f3, false );
+		alive += neighbors.get( delta, 0, f3, true  );			
+		dead  += neighbors.get( delta, 0, f4, false );
+		alive += neighbors.get( delta, 0, f4, true  );			
+
 		for( int i = 0; i < BUCKETS; i++ ) {
 			dead  += brain.get( delta, i, e, false );
 			alive += brain.get( delta, i, e, true  );			
-
-			dead  += neighbors.get( delta, i, f, false );
-			alive += neighbors.get( delta, i, f, true  );			
 		}
 	}
 
@@ -184,11 +203,33 @@ double p_alive_from_bucket( int delta, int bucket, encoding e, encoding f ) {
 
 	return double(alive + 1) / double(dead + alive + 2);
 }
-bool predict_from_bucket( int delta, int bucket, encoding e, encoding f ) {
-	return p_alive_from_bucket( delta, bucket, e, f ) > 0.5;
+bool predict_from_bucket( int delta, int bucket, encoding e,
+			  encoding f1, encoding f2, encoding f3, encoding f4 ) {
+	return p_alive_from_bucket( delta, bucket, e, f1, f2, f3, f4 ) > 0.5;
 }
-bool predict_from_bucket( int delta, int bucket, grid<K,K> g, grid<K,K> h ) {
-	return predict_from_bucket( delta, bucket, encode<K,K>(g), encode<K,K>(h) );
+bool predict_from_bucket( int delta, int bucket, grid<K,K> g,
+			  grid<K,K> h1, grid<K,K> h2, grid<K,K> h3, grid<K,K> h4 ) {
+	return predict_from_bucket( delta, bucket, encode<K,K>(g),
+				    encode<K,K>(h1),
+				    encode<K,K>(h2),
+				    encode<K,K>(h3),
+				    encode<K,K>(h4)
+		);
+}
+
+void get_neighbors_centered( const big_grid& stop, const int& x, const int& y,
+			     grid<K,K>& f1, grid<K,K>& f2, grid<K,K>& f3, grid<K,K>& f4 ) {
+	f1 = stop.subgrid<K,K>( x+1, y  , 2, 2 );
+
+	f2 = stop.subgrid<K,K>( x  , y+1, 2, 2 );
+	f2 = flip_grid   <K,K>( f2 );
+
+	f3 = stop.subgrid<K,K>( x  , y-1, 2, 2 );
+	f3 = rotate_grid <K,K>( f3 );
+
+	f4 = stop.subgrid<K,K>( x-1, y  , 2, 2 );
+	f4 = flip_grid   <K,K>( f4 );
+	f4 = rotate_grid <K,K>( f4 );
 }
 
 bool predict_with_likelihood( int delta, big_grid stop, int x, int y,
@@ -198,15 +239,19 @@ bool predict_with_likelihood( int delta, big_grid stop, int x, int y,
 		grid<K,K> g = stop.subgrid<K,K>( x, y, 2, 2 );
 		e = encode<K,K>( g );
 	}
-	encoding f;
+	encoding f1, f2, f3, f4;
 	{
-		grid<K,K> h = stop.subgrid<K,K>( x, y, 2, 2 );
-		f = encode<K,K>( h );
+		grid<K,K> g1, g2, g3, g4;
+		get_neighbors_centered( stop, x, y, g1, g2, g3, g4 );
+		f1 = encode<K,K>( g1 );
+		f2 = encode<K,K>( g2 );
+		f3 = encode<K,K>( g3 );
+		f4 = encode<K,K>( g4 );
 	}
 
 	double p = 0;
 	for( int i = 0; i < BUCKETS; i++ ) {
-		p += likelihood[i] * p_alive_from_bucket( delta, i, e, f );
+		p += likelihood[i] * p_alive_from_bucket( delta, i, e, f1, f2, f3, f4 );
 	}
 
 	return p > 0.5;

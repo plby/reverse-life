@@ -98,7 +98,7 @@ struct grid {
 	  underlying grid offset by (cx2, cy2).
 	*/
 	template<int X2, int Y2>
-	grid<X2, Y2> subgrid( const int& x, const int& y, const int& cx2, const int& cy2 ) {
+	grid<X2, Y2> subgrid( const int& x, const int& y, const int& cx2, const int& cy2 ) const {
 		grid<X2, Y2> result;
 		result.cx = cx2;
 		result.cy = cy2;
