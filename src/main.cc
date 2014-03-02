@@ -39,9 +39,9 @@ void init( ) {
 int main( ) {
 	init();
 
-	sat();
+	//	sat();
 
-//	test();
+	test();
 
 //	submit( predict );
 

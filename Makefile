@@ -1,4 +1,4 @@
-all: bin/main
+all: bin/main bin/maino
 
 bin:
 	mkdir bin
