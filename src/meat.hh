@@ -173,21 +173,6 @@ bool predict_from_bucket( int delta, int bucket, grid<K,K> g ) {
 	return predict_from_bucket( delta, bucket, encode<K,K>(g) );
 }
 
-const double TOLERANCE = 0.1;
-bool predict_with_likelihood( int delta, big_grid stop, int x, int y,
-			      double likelihood[BUCKETS], bool no_recurse );
-bool hack( int delta, big_grid stop, int x, int y, double likelihood[BUCKETS] ) {
-	int t = 0;
-	for( int dx = -1; dx <= 1; dx++ ) {
-	for( int dy = -1; dy <= 1; dy++ ) {
-		t *= 2;
-		t += stop.represented_uncentered( x+dx, y+dy ) and
-			predict_with_likelihood( delta+1, stop, x, y, likelihood, true );
-	}
-	}
-	return life_step[t];
-}
-
 bool predict_with_likelihood( int delta, big_grid stop, int x, int y,
 			      double likelihood[BUCKETS], bool no_recurse = false ) {
 	grid<K,K> g = stop.subgrid<K,K>( x, y, 2, 2 );
@@ -196,10 +181,6 @@ bool predict_with_likelihood( int delta, big_grid stop, int x, int y,
 	double p = 0;
 	for( int i = 0; i < BUCKETS; i++ ) {
 		p += likelihood[i] * p_alive_from_bucket( delta, i, e );
-	}
-
-	if( (not no_recurse) and abs(p-0.5) < TOLERANCE and delta < 5 ) {
-		return hack( delta, stop, x, y, likelihood );
 	}
 
 	return p > 0.5;
