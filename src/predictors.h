@@ -1,9 +1,6 @@
 #ifndef PREDICTORS_H
 #define PREDICTORS_H
 
-const int TEST_REPORT  = 10000;
-const int TRAIN_REPORT = 10000;
-
 /*
   C++ doesn't have first-class function objects, and I don't want to
   wrap this into a class, so a predictor is just a typedef to a
@@ -36,11 +33,11 @@ int grade_once( testing_data<X,Y> d, predictor p ) {
   Grade some prediction functions
 */
 template <int X, int Y>
-vector<double> grade_many( vector<predictor> ps, int trials = 100000 ) {
+vector<double> grade_many( vector<predictor> ps, int TEST = 50000, int TEST_REPORT = 10000 ) {
 	int P = ps.size();
 	vector<int> wrong( P );
 	vector<int> total( P );
-	for( int i = 0; i < trials; i++ ) {
+	for( int i = 0; i < TEST; i++ ) {
 		testing_data<X,Y> d;
 		for( int j = 0; j < P; j++ ) {
 			wrong[j] += grade_once( d, ps[j] );

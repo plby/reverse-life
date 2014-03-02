@@ -7,12 +7,11 @@
   This data structure contains the information necessary for training,
   and a subset of it is useful for testing.
 */
-const int GRIDS = BURN + DELTA + 1;
 
 template <int X, int Y>
 struct training_data {
 	double p;
-	grid<X,Y> gs[GRIDS];
+	grid<X,Y> gs[BURN + DELTA + 1];
 
 	/*
 	  Generate a random position according to the Bernoulli(p)

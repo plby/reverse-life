@@ -133,7 +133,7 @@ void train_once( training_data<X,Y> d ) {
 	}
 }
 template <int X, int Y>
-void train_many( int TRAIN = 50000 ) {
+void train_many( int TRAIN = 50000, int TRAIN_REPORT = 10000 ) {
 	for( int i = 0; i < TRAIN; i++ ) {
 		if( TRAIN_REPORT > 0 and (i % TRAIN_REPORT) == 0 )
 			cout << i << " training grids generated." << endl;
