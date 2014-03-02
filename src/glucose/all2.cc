@@ -2367,7 +2367,7 @@ protected:
     //
     void     attachClause     (CRef cr);               // Attach a clause to watcher lists.
     void     detachClause     (CRef cr, bool strict = false); // Detach a clause to watcher lists.
-    void     removeclause     (CRef cr);               // Detach and free a clause.
+    void     removeClause     (CRef cr);               // Detach and free a clause.
     bool     locked           (const Clause& c) const; // Returns TRUE if a clause is a reason for some implication in the current state.
     bool     satisfied        (const Clause& c) const; // Returns TRUE if a clause is satisfied in the current state.
 
@@ -2778,13 +2778,6 @@ Var Solver::newVar(bool sign, bool dvar)
 
 bool Solver::addClause_(vec<Lit>& ps)
 {
-		for( int i = 0; i < ps.size(); i++ ) {
-		cout << (sign(ps[i]) ? "-" : "+")
-		     << (var (ps[i])) << " ";
-	}
-	cout << ".\n";
-
-
     assert(decisionLevel() == 0);
     if (!ok) return false;
 
@@ -2880,7 +2873,7 @@ void Solver::detachClause(CRef cr, bool strict) {
     else            clauses_literals -= c.size(); }
 
 
-void Solver::removeclause(CRef cr) {
+void Solver::removeClause(CRef cr) {
 
   Clause& c = ca[cr];
 
@@ -3513,7 +3506,7 @@ void Solver::reduceDB()
   for (i = j = 0; i < learnts.size(); i++){
     Clause& c = ca[learnts[i]];
     if (c.lbd()>2 && c.size() > 2 && c.canBeDel() &&  !locked(c) && (i < limit)) {
-      removeclause(learnts[i]);
+      removeClause(learnts[i]);
       nbRemovedClauses++;
     }
     else {
@@ -3536,7 +3529,7 @@ void Solver::removeSatisfied(vec<CRef>& cs)
 
 
         if (satisfied(c)) 
-            removeclause(cs[i]);
+            removeClause(cs[i]);
         else
             cs[j++] = cs[i];
     }
@@ -3899,7 +3892,7 @@ void Solver::toDimacs(FILE* f, const vec<Lit>& assumps)
 
     vec<Var> map; Var max = 0;
 
-    // Cannot use removeclauses here because it is not safe
+    // Cannot use removeClauses here because it is not safe
     // to deallocate them at this point. Could be improved.
     int cnt = 0;
     for (int i = 0; i < clauses.size(); i++)

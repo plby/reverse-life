@@ -1,7 +1,8 @@
 #ifndef SAT_HH
 #define SAT_HH
 
-#include "all.cc"
+#include "core/Solver.h"
+using namespace Minisat;
 #include "life.hh"
 
 void include_clauses( Solver& S, const vector<Lit>& prev, const Lit& next ) {
@@ -20,6 +21,7 @@ void include_clauses( Solver& S, const vector<Lit>& prev, const Lit& next ) {
 			clause.push( ~next );
 		}
 		S.addClause( clause );
+		cout << S.nClauses() << "\n";
 	}
 }
 
@@ -32,7 +34,7 @@ struct life_solver {
 	grid<X, Y> final; // last life configuration
 	int DEPTH;   // how many steps back are we going
 	int HORIZON; // how many steps back do we care about forcing
-	Lit TRUE;
+	Lit FALSE;
 	Solver S;
 
 	// A list of known solutions:
@@ -40,7 +42,7 @@ struct life_solver {
 
 	// This is a somewhat tricky construction for keeping track
 	// whether things are possible
-	bool* possible;
+//	bool* possible;
 
 	life_solver( grid<X,Y> final, int DEPTH, int HORIZON ) :
 		final(final), DEPTH(DEPTH), HORIZON(HORIZON) {
@@ -55,8 +57,8 @@ struct life_solver {
 		}
 		// Add a variable that is forced true, for convenience
 		S.newVar();
-		TRUE = get_literal( DEPTH+1, 0, 0 );
-		S.addClause( TRUE );
+		FALSE = get_literal( DEPTH+1, 0, 0 );
+		S.addClause( ~FALSE );
 		assert( S.nVars() == (DEPTH+1) * X * Y + 1 );
 
 		// Start record-keeping about possible variables
@@ -94,12 +96,19 @@ struct life_solver {
 	int get_numbering( int depth, int x, int y ) {
 		return (depth * X + x) * Y + y;
 	}
+	int get_numbering_safe( int depth, int x, int y ) {
+		if( 0 <= x and x < X and 0 <= y and y < Y ) {
+			return (depth * X + x) * Y + y;
+		} else {
+			return -1;
+		}
+	}
 
 	Lit get_literal( int depth, int x, int y, bool sign = false ) {
 		if( 0 <= x and x < X and 0 <= y and y < Y ) {
 			return mkLit( get_numbering( depth, x, y ), sign );
 		} else {
-			return ~TRUE;
+			return FALSE;
 		}
 	}
 
@@ -109,8 +118,9 @@ struct life_solver {
 		// 	exit( 50 );
 		// }
 
-		vec<Lit> dummy;
-		bool satisfiable = S.solve(dummy);
+		cout << "p cnf " << S.nVars() << " " << S.nClauses() << "\n";
+
+		bool satisfiable = S.solve();
 		if( not satisfiable ) {
 			cerr << "Did not expect unsatisfiable problem.\n";
 			exit( 60 );
@@ -121,13 +131,10 @@ struct life_solver {
 		for( int i = 0; i < S.nVars(); i++ ) {
 			lbool l = S.modelValue( mkLit(i) );
 			if( l == l_True ) {
-				cout << i << " is true.\n";
 				solution.push_back( true  );
 			} else if( l == l_False ) {
-				cout << i << " is false.\n";
 				solution.push_back( false );
 			} else {
-				cout << i << " is indeterminate.\n";
 				solution.push_back( false );
 //				indeterminate = true;
 			}
@@ -138,21 +145,44 @@ struct life_solver {
 	void extract_grid( grid<X,Y>& result ) {
 		for( int x = 0; x < X; x++ ) {
 		for( int y = 0; y < Y; y++ ) {
-			result.set_uncentered( x, y, solutions[0][get_numbering(1,x,y)] );
+			result.set_safe_uncentered( x, y, solutions[0][get_numbering(DELTA,x,y)] );
 		}
 		}
 	}
 };
 
 void sat( ) {
-	while( 1 ) {
-		grid<4,4> g, h, i;
-		g = decode<4,4>( uniform_smallint(1 << 16) );
-		h = evolve_once<4,4>( g );
-		life_solver<4,4> ls( h, 1, 1 );
+	const int WIDTH  = 2;
+	const int HEIGHT = 2;
+	const int MANY = 1;
+	for( encoding e = 0; e < (1 << (WIDTH*HEIGHT)); e++ ) {
+		grid<WIDTH,HEIGHT> g[MANY+1];
+		g[0] = decode<WIDTH,HEIGHT>( e );
+		for( int i = 0; i < MANY; i++ ) {
+			g[i+1] = evolve_once<WIDTH,HEIGHT>( g[i] );
+		}
+
+		cout << g[MANY];
+		life_solver<WIDTH,HEIGHT> ls( g[MANY], MANY, MANY );
 		ls.solve();
-		ls.extract_grid( i );
-		cout << g << h << i << "\n";
+
+		grid<WIDTH,HEIGHT> h[MANY+1];
+		ls.extract_grid( h[0] );
+		for( int i = 0; i < MANY; i++ ) {
+			h[i+1] = evolve_once<WIDTH,HEIGHT>( h[i] );
+		}
+
+		if( g[MANY] != h[MANY] ) {
+			cerr << "FAILED!!!\n";
+			cerr << "e = " << e << "\n";
+			for( int i = 0; i <= MANY; i++ ) {
+				cerr << "g[" << i << "]=" << g[i];
+			}
+			for( int i = 0; i <= MANY; i++ ) {
+				cerr << "h[" << i << "]=" << h[i];
+			}
+			exit( 20 );
+		}
 	}
 }
 
