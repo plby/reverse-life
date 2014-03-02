@@ -102,10 +102,10 @@ void grade_many_boundary( vector<predictor> ps, int TEST = 50000, int TEST_REPOR
 		if( TEST_REPORT > 0 and i > 0 and (i % TEST_REPORT) == 0 ) {
 			for( int j = 0; j < P; j++ ) {
 				cout << setprecision(5)
-				     << (double)(on [j]) / (double)(total[j])
+				     << (double)(on [j]) / (double)(total[j]*144./400.)
 				     << "\t";
 				cout << setprecision(5)
-				     << (double)(off[j]) / (double)(total[j])
+				     << (double)(off[j]) / (double)(total[j]*256./400.)
 				     << "\t";
 			}
 			cout << "(" << i << ")\n";
