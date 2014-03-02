@@ -11,12 +11,12 @@ This is where the real meat of the predictor is.
   This is the first non-trivial predictor.  It uses mmap to manage its
   data representation.
 */
-const int BUCKETS = 1;
+const int BUCKETS = 8;
 const int ENTRIES = 2;
 const int BRAIN = DELTA * BUCKETS * SMALLCODE * ENTRIES;
 
 int bucket( double p ) {
-	double cutoffs[8] = 
+	double cutoffs[BUCKETS] = 
 	{
 		0.164699,
 		0.258496,
