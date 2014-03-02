@@ -50,7 +50,7 @@ void grade_once_boundary( testing_data<X,Y> d, big_grid guess, int& boundary, in
 template <int X, int Y>
 void grade_once_boundary( testing_data<X,Y> d, predictor p, int& boundary, int& inside ) {
 	big_grid guess = p( d.delta, d.stop );
-	grade_once<X,Y>( d, guess );
+	grade_once_boundary<X,Y>( d, guess, boundary, inside );
 }
 
 /*
