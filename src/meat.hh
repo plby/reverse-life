@@ -178,8 +178,8 @@ double p_alive_from_bucket( int delta, int bucket, encoding e,
 		dead  += neighbors.get( delta, 0, f4, false );
 		alive += neighbors.get( delta, 0, f4, true  );
 
-		dead  /= 8;
-		alive /= 8;
+		dead  /= BUCKETS;
+		alive /= BUCKETS;
 		dead  += brain.get( delta, bucket, e, false );
 		alive += brain.get( delta, bucket, e, true  );
 	} else {
