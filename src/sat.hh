@@ -113,8 +113,10 @@ struct life_solver {
 
 		vec<Lit> dummy;
 		bool satisfiable = S.solve();
-		if( not satisfiable )
-			return result;
+		if( not satisfiable ) {
+			cerr << "Did not expect unsatisfiable problem.\n";
+			exit( 60 );
+		}
 
 		bool indeterminate = false;
 		vector<bool> solution;
@@ -143,11 +145,12 @@ struct life_solver {
 
 void sat( ) {
 	grid<4,4> g = decode<4,4>( uniform_smallint( 1 << 16 ) );
-	life_solver<4,4> ls( g, 1, 1 );
+	grid<4,4> h = evolve_once( g );
+	life_solver<4,4> ls( h, 1, 1 );
 	ls.solve();
-	grid<4,4> h;
-	ls.extract_grid( h );
-	cout << g << "\n" << h << "\n";
+	grid<4,4> i;
+	ls.extract_grid( i );
+	cout << "Starting grid:" << g << "\nOne step forward:\n" << h << "\nOne step back:\n" << i << "\n";
 }
 
 #endif
