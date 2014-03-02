@@ -30,16 +30,20 @@ void include_clauses( Solver& S, const vector<Lit>& prev, const Lit& next ) {
 template<int X, int Y>
 struct life_solver {
 	grid<X, Y> final; // last life configuration
-	int DEPTH; // how many steps back are we going
+	int DEPTH;   // how many steps back are we going
+	int HORIZON; // how many steps back do we care about forcing
 	Lit TRUE;
 	Solver S;
 
 	// A list of known solutions:
 	vector<vector<bool> > solutions;
 
+	// This is a somewhat tricky construction for keeping track
+	// whether things are possible
 	bool* possible;
 
-	life_solver( grid<X,Y> f ) : final(f), DEPTH(0) {
+	life_solver( grid<X,Y> final, int DEPTH, int HORIZON ) :
+		final(final), DEPTH(DEPTH), HORIZON(HORIZON) {
 		// Add one variable for each cell at each of DEPTH+1
 		// times
 		for( int depth = 0; depth <= DEPTH; depth++ ) {
@@ -56,7 +60,7 @@ struct life_solver {
 		assert( S.nVars() == DEPTH * X * Y + 1 );
 
 		// Start record-keeping about possible variables
-		possible = vector<int>( DEPTH * X * Y + 1, 0 );
+//		possible = vector<int>( DEPTH * X * Y + 1, 0 );
 
 		// Set up SAT problem boundary condition
 		for( int x = 0; x < X; x++ ) {
@@ -87,10 +91,13 @@ struct life_solver {
 		}
 	}
 
+	int get_numbering( int depth, int x, int y ) {
+		return (depth * X + x) * Y + y;
+	}
+
 	Lit get_literal( int depth, int x, int y, bool sign = false ) {
 		if( 0 <= x and x < X and 0 <= y and y < Y ) {
-			int t = (depth * X + x) * Y + y;
-			return mkLit( t, sign );
+			return mkLit( get_numbering( depth, x, y ), sign );
 		} else {
 			return ~TRUE;
 		}
@@ -109,27 +116,38 @@ struct life_solver {
 		if( not satisfiable )
 			return result;
 
+		bool indeterminate = false;
+		vector<bool> solution;
 		for( int i = 0; i < S.nVars(); i++ ) {
 			lbool l = S.modelValue( mkLit(i) );
-//			if( l == 
-		}
-		for( int i = 0; i < S.nVars(); i++) {
-			lbool l = S.modelValue( mkLit(i) );
-			printf( " " );
 			if( l == l_True ) {
-				printf( "+" );
+				solution.push_back( true  );
 			} else if( l == l_False ) {
-				printf( "-" );
+				solution.push_back( false );
 			} else {
-				printf( "?" );
+				solution.push_back( false );
+				indeterminate = true;
 			}
-			printf( "%d", i+1 );
 		}
-		
+		solutions.push_back(solution);
+	}
+
+	void extract_grid( grid<X,Y>& result ) {
+		for( int x = 0; x < X; x++ ) {
+		for( int y = 0; y < Y; y++ ) {
+			result.set_uncentered( x, y, solutions[0][get_numbering(1,x,y)] );
+		}
+		}
 	}
 };
 
 void sat( ) {
+	grid<4,4> g = decode<4,4>( uniform_smallint( 1 << 16 ) );
+	life_solver<4,4> ls( g, 1, 1 );
+	ls.solve();
+	grid<4,4> h;
+	ls.extract_grid( h );
+	cout << g << "\n" << h << "\n";
 }
 
 #endif
