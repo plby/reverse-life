@@ -43,7 +43,7 @@ my( $infile, $outfile );
 }
 
 # Find one possible value of the variables
-system( $solver, @args, "-o", $outfile, $infile );
+solve();
 
 # Read assignment
 my( @one );
@@ -68,7 +68,7 @@ while( 1 ) {
 	print IN $REST;
 	close IN;
 
-	system( $solver, @args, "-o", $outfile, $infile );
+	solve();
 
 	my( @two );
 	my $sat = read_assignment( $outfile, \@two );
@@ -107,4 +107,11 @@ sub read_assignment {
 	}
 	$response =~ s/(-?\d+)/$array->[abs($1)] = ($1 > 0 ? 1 : 0)/ge;
 	return $result;
+}
+
+my( $count );
+sub solve {
+	$count++;
+	warn "Solving instance $count.\n";
+	system( $solver, @args, "-o", $outfile, $infile );
 }
