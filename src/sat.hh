@@ -103,16 +103,14 @@ struct life_solver {
 		}
 	}
 
-	vector<bool> solve( ) {
-		vector<bool> result;
-
-		if( !S.simplify() ) {
+	void solve( ) {
+		if( not S.simplify() ) {
 			cerr << "Did not expect unsatisfiable problem.\n";
 			exit( 50 );
 		}
 
 		vec<Lit> dummy;
-		bool satisfiable = S.solve();
+		bool satisfiable = S.solve(dummy);
 		if( not satisfiable ) {
 			cerr << "Did not expect unsatisfiable problem.\n";
 			exit( 60 );
