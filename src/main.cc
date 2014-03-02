@@ -38,13 +38,9 @@ void init( ) {
 int main( ) {
 	init();
 
-	while( 1 ) {
-		train_many( );
-	}
-
 //	sat();
 
-//	test();
+	test_boundary();
 
 //	submit( predict );
 
