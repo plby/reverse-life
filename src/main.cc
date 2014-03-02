@@ -38,9 +38,9 @@ void init( ) {
 int main( ) {
 	init();
 
-//	sat();
+	sat();
 
-	test_boundary();
+//	test();
 
 //	submit( predict );
 

@@ -30,30 +30,6 @@ int grade_once( testing_data<X,Y> d, predictor p ) {
 }
 
 /*
-  Return the number of incorrect cells guessed on/off the boundary
-*/
-template <int X, int Y>
-void grade_once_boundary( testing_data<X,Y> d, big_grid guess, int& boundary, int& inside ) {
-	for( int x = 0; x < X; x++ ) {
-	for( int y = 0; y < Y; y++ ) {
-		bool b = (x < 2 or x >= X-2 or y < 2 or y >= Y-2);
-		bool wrong = (d.start.get_bool_uncentered(x,y)
-			      !=guess.get_bool_uncentered(x,y) );
-		if( b ) {
-			boundary += wrong;
-		} else {
-			inside   += wrong;
-		}
-	}
-	}
-}
-template <int X, int Y>
-void grade_once_boundary( testing_data<X,Y> d, predictor p, int& boundary, int& inside ) {
-	big_grid guess = p( d.delta, d.stop );
-	grade_once_boundary<X,Y>( d, guess, boundary, inside );
-}
-
-/*
   Grade some prediction functions
 */
 template <int X, int Y>
@@ -82,35 +58,6 @@ vector<double> grade_many( vector<predictor> ps, int TEST = 50000, int TEST_REPO
 		result[j] = (double)(wrong[j]) / (double)(total[j]);
 	}
 	return result;
-}
-
-/*
-  Grade some prediction functions on/off the boundary
-*/
-template <int X, int Y>
-void grade_many_boundary( vector<predictor> ps, int TEST = 50000, int TEST_REPORT = 10000 ) {
-	int P = ps.size();
-	vector<int> on( P ), off( P );
-	vector<int> total( P );
-	for( int i = 1; i <= TEST; i++ ) {
-		testing_data<X,Y> d;
-		for( int j = 0; j < P; j++ ) {
-			grade_once_boundary( d, ps[j], on[j], off[j] );
-			total[j] += X*Y;
-		}
-
-		if( TEST_REPORT > 0 and i > 0 and (i % TEST_REPORT) == 0 ) {
-			for( int j = 0; j < P; j++ ) {
-				cout << setprecision(5)
-				     << (double)(on [j]) / (double)(total[j]*144./400.)
-				     << "\t";
-				cout << setprecision(5)
-				     << (double)(off[j]) / (double)(total[j]*256./400.)
-				     << "\t";
-			}
-			cout << "(" << i << ")\n";
-		}
-	}
 }
 
 /*

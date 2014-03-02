@@ -22,26 +22,6 @@ void test( int TEST = 50000 ) {
 	cout << "\n";
 }
 
-void test_boundary( int TEST = 50000 ) {
-	vector<predictor> ps;
-
-	cout << "stop\t\t";
-	ps.push_back( start_at_stop );
-
-	cout << "dead\t\t";
-	ps.push_back( all_dead );
-
-	cout << "predict\t\t";
-	ps.push_back( predict );
-
-	cout << "\n";
-
-	cout << "on\toff\ton\toff\ton\toff\n";
-
-	grade_many_boundary<N,N>( ps, TEST );
-	cout << "\n";
-}
-
 void fail_parse( string detail ) {
 	cerr << "Failed to parse test file because of " << detail << ".\n";
 	exit( 2 );
