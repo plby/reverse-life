@@ -1213,19 +1213,19 @@ OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWA
 namespace Glucose {
 
 //=================================================================================================
-// Default hash/equals functions
+// Default ghash/equals functions
 //
 
-template<class K> struct Hash  { uint32_t operator()(const K& k)               const { return hash(k);  } };
+template<class K> struct Ghash  { uint32_t operator()(const K& k)               const { return ghash(k);  } };
 template<class K> struct Equal { bool     operator()(const K& k1, const K& k2) const { return k1 == k2; } };
 
-template<class K> struct DeepHash  { uint32_t operator()(const K* k)               const { return hash(*k);  } };
+template<class K> struct DeepGhash  { uint32_t operator()(const K* k)               const { return ghash(*k);  } };
 template<class K> struct DeepEqual { bool     operator()(const K* k1, const K* k2) const { return *k1 == *k2; } };
 
-static inline uint32_t hash(uint32_t x){ return x; }
-static inline uint32_t hash(uint64_t x){ return (uint32_t)x; }
-static inline uint32_t hash(int32_t x) { return (uint32_t)x; }
-static inline uint32_t hash(int64_t x) { return (uint32_t)x; }
+static inline uint32_t ghash(uint32_t x){ return x; }
+static inline uint32_t ghash(uint64_t x){ return (uint32_t)x; }
+static inline uint32_t ghash(int32_t x) { return (uint32_t)x; }
+static inline uint32_t ghash(int64_t x) { return (uint32_t)x; }
 
 
 //=================================================================================================
@@ -1236,16 +1236,16 @@ static const int nprimes          = 25;
 static const int primes [nprimes] = { 31, 73, 151, 313, 643, 1291, 2593, 5233, 10501, 21013, 42073, 84181, 168451, 337219, 674701, 1349473, 2699299, 5398891, 10798093, 21596719, 43193641, 86387383, 172775299, 345550609, 691101253 };
 
 //=================================================================================================
-// Hash table implementation of Maps
+// Ghash table implementation of Maps
 //
 
-template<class K, class D, class H = Hash<K>, class E = Equal<K> >
+template<class K, class D, class H = Ghash<K>, class E = Equal<K> >
 class Map {
  public:
     struct Pair { K key; D data; };
 
  private:
-    H          hash;
+    H          ghash;
     E          equals;
 
     vec<Pair>* table;
@@ -1258,12 +1258,12 @@ class Map {
 
     bool    checkCap(int new_size) const { return new_size > cap; }
 
-    int32_t index  (const K& k) const { return hash(k) % cap; }
+    int32_t index  (const K& k) const { return ghash(k) % cap; }
     void   _insert (const K& k, const D& d) { 
         vec<Pair>& ps = table[index(k)];
         ps.push(); ps.last().key = k; ps.last().data = d; }
 
-    void    rehash () {
+    void    reghash () {
         const vec<Pair>* old = table;
 
         int old_cap = cap;
@@ -1280,14 +1280,14 @@ class Map {
 
         delete [] old;
 
-        // printf(" --- rehashing, old-cap=%d, new-cap=%d\n", cap, newsize);
+        // printf(" --- reghashing, old-cap=%d, new-cap=%d\n", cap, newsize);
     }
 
     
  public:
 
     Map () : table(NULL), cap(0), size(0) {}
-    Map (const H& h, const E& e) : hash(h), equals(e), table(NULL), cap(0), size(0){}
+    Map (const H& h, const E& e) : ghash(h), equals(e), table(NULL), cap(0), size(0){}
     ~Map () { delete [] table; }
 
     // PRECONDITION: the key must already exist in the map.
@@ -1317,7 +1317,7 @@ class Map {
     }
 
     // PRECONDITION: the key must *NOT* exist in the map.
-    void insert (const K& k, const D& d) { if (checkCap(size+1)) rehash(); _insert(k, d); size++; }
+    void insert (const K& k, const D& d) { if (checkCap(size+1)) reghash(); _insert(k, d); size++; }
     bool peek   (const K& k, D& d) const {
         if (size == 0) return false;
         const vec<Pair>& ps = table[index(k)];
@@ -1358,7 +1358,7 @@ class Map {
     int  elems() const { return size; }
     int  bucket_count() const { return cap; }
 
-    // NOTE: the hash and equality objects are not moved by this method:
+    // NOTE: the ghash and equality objects are not moved by this method:
     void moveTo(Map& other){
         delete [] other.table;
 
@@ -1864,11 +1864,11 @@ void OccLists<Idx,Vec,Deleted>::clean(const Idx& idx)
 template<class T>
 class CMap
 {
-    struct CRefHash {
+    struct CRefGhash {
         uint32_t operator()(CRef cr) const { return (uint32_t)cr; } };
 
-    typedef Map<CRef, T, CRefHash> HashTable;
-    HashTable map;
+    typedef Map<CRef, T, CRefGhash> GhashTable;
+    GhashTable map;
         
  public:
     // Size-operations:
@@ -1888,7 +1888,7 @@ class CMap
 
     // Iteration (not transparent at all at the moment):
     int  bucket_count() const { return map.bucket_count(); }
-    const vec<typename HashTable::Pair>& bucket(int i) const { return map.bucket(i); }
+    const vec<typename GhashTable::Pair>& bucket(int i) const { return map.bucket(i); }
 
     // Move contents to other map:
     void moveTo(CMap& other){ map.moveTo(other.map); }
@@ -2795,13 +2795,13 @@ bool Solver::addClause_(vec<Lit>& ps)
           flag = 1;
       }
     }
-
-    for (i = j = 0, p = lit_Undef; i < ps.size(); i++)
+	for (i = j = 0, p = lit_Undef; i < ps.size(); i++) {
       if (value(ps[i]) == l_True || ps[i] == ~p)
 	return true;
       else if (value(ps[i]) != l_False && ps[i] != p)
 	ps[j++] = p = ps[i];
     ps.shrink(i - j);
+	}
     
     if (flag && (certifiedUNSAT)) {
       for (i = j = 0, p = lit_Undef; i < ps.size(); i++)
@@ -3713,7 +3713,7 @@ lbool Solver::search(int nof_conflicts)
                 next = pickBranchLit();
 
                 if (next == lit_Undef){
-		  printf("c last restart ## conflicts  :  %d %d \n",conflictC,decisionLevel());
+//		  printf("c last restart ## conflicts  :  %d %d \n",conflictC,decisionLevel());
 		  // Model found:
 		  return l_True;
 		}

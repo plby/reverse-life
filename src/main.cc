@@ -1,5 +1,3 @@
-#include "sat.hh"
-
 #include <cmath>
 #include <bitset>
 #include <vector>
@@ -30,6 +28,7 @@ using namespace std;
 #include "predictors.hh"
 #include "meat.hh"
 #include "actions.hh"
+#include "sat.hh"
 
 void init( ) {
 	init_life();
@@ -39,9 +38,13 @@ void init( ) {
 int main( ) {
 	init();
 
-	//	sat();
+	while( 1 ) {
+		train_many( );
+	}
 
-	test();
+//	sat();
+
+//	test();
 
 //	submit( predict );
 

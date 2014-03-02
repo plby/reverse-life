@@ -1,7 +1,7 @@
 #ifndef LIFE_HH
 #define LIFE_HH
 
-#include "grid.h"
+#include "grid.hh"
 
 /*
   We precompute a lookup table for the game of life function for

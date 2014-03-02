@@ -1,6 +1,8 @@
 #ifndef MEAT_HH
 #define MEAT_HH
 
+#include "grid.hh"
+
 /*
 This is where the real meat of the predictor is.
 */
@@ -9,12 +11,12 @@ This is where the real meat of the predictor is.
   This is the first non-trivial predictor.  It uses mmap to manage its
   data representation.
 */
-const int BUCKETS = 8;
+const int BUCKETS = 1;
 const int ENTRIES = 2;
 const int BRAIN = DELTA * BUCKETS * SMALLCODE * ENTRIES;
 
 int bucket( double p ) {
-	double cutoffs[BUCKETS] = 
+	double cutoffs[8] = 
 	{
 		0.164699,
 		0.258496,
@@ -109,8 +111,7 @@ struct brain_data {
 	}
 } brain;
 
-template <int X, int Y>
-void train_once( training_data<X,Y> d ) {
+void train_once( training_data<N,N> d ) {
 	// Find maximum delta without dead grid
 	int alive;
 	for( alive = 1; alive <= DELTA; alive++ ) {
@@ -118,13 +119,13 @@ void train_once( training_data<X,Y> d ) {
 			break;
 	}
 
-	for( int x = 0; x < X; x++ ) {
-	for( int y = 0; y < Y; y++ ) {
+	for( int x = 0; x < N; x++ ) {
+	for( int y = 0; y < N; y++ ) {
 		bool truth = d.gs[BURN].get_bool_uncentered( x, y );
 
 		for( int delta = 1; delta < alive; delta++ ) {
-			grid<K,K> g;
-			g = d.gs[BURN+delta].subgrid<K,K>( x, y, 2, 2 );
+		        big_grid h = d.gs[BURN+delta]; 
+			grid<K,K> g = h.subgrid<K,K>( x, y, 2, 2 );
 			encoding e = encode<K,K>( g );
 
 			brain.add( delta, bucket(d.p), e, truth );
@@ -132,13 +133,12 @@ void train_once( training_data<X,Y> d ) {
 	}
 	}
 }
-template <int X, int Y>
 void train_many( int TRAIN = 50000, int TRAIN_REPORT = 10000 ) {
 	for( int i = 0; i < TRAIN; i++ ) {
 		if( TRAIN_REPORT > 0 and (i % TRAIN_REPORT) == 0 )
 			cout << i << " training grids generated." << endl;
-		training_data<X,Y> d;
-		train_once<X,Y>( d );
+		training_data<N,N> d;
+		train_once( d );
 	}
 }
 
