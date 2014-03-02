@@ -1,3 +1,5 @@
+#include "sat.hh"
+
 #include <cmath>
 #include <bitset>
 #include <vector>
@@ -19,15 +21,15 @@ using namespace std;
 #include <unistd.h>
 
 // My headers
-#include "grid.h"
-#include "life.h"
-#include "code.h"
-#include "rand.h"
-#include "generate.h"
-#include "consts.h"
-#include "predictors.h"
-#include "meat.h"
-#include "actions.h"
+#include "grid.hh"
+#include "life.hh"
+#include "code.hh"
+#include "rand.hh"
+#include "generate.hh"
+#include "consts.hh"
+#include "predictors.hh"
+#include "meat.hh"
+#include "actions.hh"
 
 void init( ) {
 	init_life();
@@ -36,6 +38,8 @@ void init( ) {
 
 int main( ) {
 	init();
+
+	sat();
 
 //	test();
 

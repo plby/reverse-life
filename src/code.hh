@@ -1,7 +1,7 @@
-#ifndef CODE_H
-#define CODE_H
+#ifndef CODE_HH
+#define CODE_HH
 
-#include "grid.h"
+#include "grid.hh"
 
 /*
   The main encoding is fairly simple.  It does not encode (cx,cy).  So

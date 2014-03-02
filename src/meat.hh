@@ -1,5 +1,5 @@
-#ifndef MEAT_H
-#define MEAT_H
+#ifndef MEAT_HH
+#define MEAT_HH
 
 /*
 This is where the real meat of the predictor is.

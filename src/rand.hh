@@ -1,5 +1,5 @@
-#ifndef RAND_H
-#define RAND_H
+#ifndef RAND_HH
+#define RAND_HH
 
 /*
   Routines to help with randomness.

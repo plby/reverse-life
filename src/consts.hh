@@ -1,5 +1,5 @@
-#ifndef CONSTS_H
-#define CONSTS_H
+#ifndef CONSTS_HH
+#define CONSTS_HH
 
 const int N = 20;
 const int K = 5;

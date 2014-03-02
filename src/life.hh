@@ -1,5 +1,5 @@
-#ifndef LIFE_H
-#define LIFE_H
+#ifndef LIFE_HH
+#define LIFE_HH
 
 #include "grid.h"
 

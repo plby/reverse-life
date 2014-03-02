@@ -1,5 +1,5 @@
-#ifndef PREDICTORS_H
-#define PREDICTORS_H
+#ifndef PREDICTORS_HH
+#define PREDICTORS_HH
 
 /*
   C++ doesn't have first-class function objects, and I don't want to

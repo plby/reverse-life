@@ -1,5 +1,5 @@
-#ifndef ACTIONS_H
-#define ACTIONS_H
+#ifndef ACTIONS_HH
+#define ACTIONS_HH
 
 void test( int TEST = 50000 ) {
 	vector<predictor> ps;

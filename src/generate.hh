@@ -1,7 +1,7 @@
-#ifndef GENERATE_H
-#define GENERATE_H
+#ifndef GENERATE_HH
+#define GENERATE_HH
 
-#include "consts.h"
+#include "consts.hh"
 
 /*
   This data structure contains the information necessary for training,
