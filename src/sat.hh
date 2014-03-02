@@ -122,6 +122,7 @@ struct life_solver {
 			lbool l = S.modelValue( mkLit(i) );
 			if( l == l_True ) {
 				solution.push_back( true  );
+				cout << "FOO.\n";
 			} else if( l == l_False ) {
 				solution.push_back( false );
 			} else {
@@ -148,7 +149,7 @@ void sat( ) {
 	life_solver<4,4> ls( h, 1, 1 );
 	ls.solve();
 	ls.extract_grid( i );
-	cout << "Starting grid:" << g << "\nOne step forward:\n" << h << "\nOne step back:\n" << i << "\n";
+	cout << "Starting grid:\n" << g << "\nOne step forward:\n" << h << "\nOne step back:\n" << i << "\n";
 }
 
 #endif

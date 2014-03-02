@@ -40,6 +40,9 @@ struct brain_data {
 	unsigned int *data;
 
 	brain_data( ) {
+		if( DISABLE_BRAIN )
+			return;
+
 		int fd;
 		if( (fd = open("data/brain", O_RDWR | O_CREAT, S_IRUSR | S_IWUSR)) < 0 ) {
 			cerr << "Couldn't open data/brain file.\n";
@@ -87,6 +90,8 @@ struct brain_data {
 	}
 
 	~brain_data( ) {
+		if( DISABLE_BRAIN )
+			return;
 		if( munmap(data, BRAIN * sizeof(unsigned int)) == -1 ) {
 			cerr << "Error in munmap of data/brain.\n";
 			exit( 7 );

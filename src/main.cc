@@ -30,6 +30,8 @@ using namespace std;
 #include "actions.hh"
 #include "sat.hh"
 
+const bool DISABLE_BRAIN = true;
+
 void init( ) {
 	init_life();
 	init_code();
